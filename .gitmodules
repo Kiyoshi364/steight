@@ -1,0 +1,3 @@
+[submodule "src/mecha"]
+	path = src/mecha
+	url = https://github.com/Hejsil/mecha
