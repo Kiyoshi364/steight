@@ -3,19 +3,48 @@ module Parser where
 import Data.Char (isDigit)
 import Control.Applicative
 
-type Input = (Int, String)
+type Column = Int
+type Lines = Int
+data Loc = L FilePath Lines Column
 
--- instance Show Input where show (n, str) = "("++ show n ++"):"++ str
-pp :: Input -> String
-pp (n, str) = "("++ show n ++"):"++ str
+instance Show Loc where show (L path ln cn) = path++"."++show ln++"."++ show cn
+
+mkLoc :: FilePath -> Loc
+mkLoc path = L path 1 1
+
+inc :: Loc -> Char -> Loc
+inc (L p ln cn) x
+    | x == '\r' = L p  ln     cn
+    | x == '\n' = L p (ln+1)   1
+    | otherwise = L p  ln    (cn+1)
+
+data Input = I
+    { loc :: Loc
+    , str :: String
+    }
+
+instance Show Input where
+    show (I loc str) = show loc ++":"++ str
+
+mkPathInput :: FilePath -> String -> Input
+mkPathInput = I . mkLoc
 
 mkInput :: String -> Input
-mkInput str = (0, str)
+mkInput = mkPathInput ""
+
+nextChar :: Input -> String
+nextChar (I _  []  ) = "<eof>"
+nextChar (I _ (x:_)) = [x]
 
 expect :: Char -> Input -> Maybe Input
-expect c (i, x:xs)
-    | c == x    = Just (i+1, xs)
-    | otherwise = Nothing
+expect c (I _  []   ) = Nothing
+expect c (I l (x:xs))
+    | c == x          = Just (I (inc l x) xs)
+    | otherwise       = Nothing
+
+expects :: String -> Input -> Maybe Input
+expects  []    = Just
+expects (x:xs) = (>>= expects xs) . expect x
 
 data Parsed a = Parsed
     { input :: Input
@@ -23,8 +52,8 @@ data Parsed a = Parsed
     }
 
 instance Show a => Show (Parsed a) where
-    show (Parsed (n, xs) (Left err)) = "<" ++ show n ++ ": " ++ err      ++ ">"
-    show (Parsed  input  (Right a )) = "[" ++ show a ++ ", " ++ pp input ++ "]"
+    show (Parsed (I l xs) (Left err)) = "<"++ show l ++": "++ err        ++">"
+    show (Parsed  input   (Right a )) = "["++ show a ++", "++ show input ++"]"
 
 instance Functor Parsed where
     fmap f (Parsed input x) = Parsed input $ fmap f x
@@ -51,11 +80,9 @@ instance Alternative Parser where
             x -> x
 
 charP :: Char -> Parser Char
-charP c = Parser $ \ input -> case input of
-    (n, []  ) -> Parsed input $ Left $ "expected " ++ [c] ++ ", found <eof>"
-    (n, x:xs) -> if c == x
-            then Parsed (n+1, xs) $ Right c
-            else Parsed input $ Left $ "expected " ++ [c] ++ ", found " ++ [x]
+charP c = Parser $ \ input -> case expect c input of
+    Just (I l xs) -> Parsed (I l xs) $ Right c
+    Nothing       -> Parsed input $ Left $ "expected `" ++ [c] ++ "`, found " ++ nextChar input
 
 spaceP :: Parser Char
 spaceP = charP ' '
@@ -68,9 +95,12 @@ strP = sequenceA . map charP
 -- strP = traverse charP -- alternativa
 
 spanP :: (Char -> Bool) -> Parser String
-spanP f = Parser $ \ (n, xs) ->
+spanP f = Parser $ \ input@(I loc xs) ->
     let (parsed, rest) = span f xs
-        in Parsed (n + length parsed, rest) $ Right parsed
+        input' = case expects parsed input of
+                Just inp -> inp
+                Nothing  -> error "This should not happen!"
+        in Parsed input' $ Right parsed
 
 numP :: Parser Int
 numP = Parser $ \ input ->
