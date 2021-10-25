@@ -2,44 +2,47 @@ module Simulation where
 
 import Inst
 
-data State = State
+data State a = State
     { ip     :: Int
-    , stack  :: [Int]
+    , stack  :: [a]
+    , out    :: String
     , code   :: Program
     } deriving Show
 
-prog :: [(Int, Inst)]
-prog = zip [0..] [Push 3, Push 2, Builtin Sub, Push 1, Builtin Add, Halt]
+begin :: Program -> State a
+begin = State 0 [] []
 
-begin :: Program -> State
-begin = State 0 []
-
-simulate :: Program -> IO State
+simulate :: Program -> IO (State Int)
 simulate code = do
-    s <- return $ loop step $ begin code
-    putStr "stack: "
-    putStrLn $ show $ stack s
+    (s, ()) <- return $ loop step $ begin code
+    putStrLn "out:"
+    putStr $ out s
     return s
 
-loop :: (a -> Maybe a) -> a -> a
+loop :: (a -> Either b a) -> a -> (a, b)
 loop f x = case f x of
-        Just x' -> loop f x'
-        Nothing -> x
+        Right x' -> loop f x'
+        Left  b  -> (x, b)
 
-step :: State -> Maybe State
-step s = if halt then Nothing else Just s{ ip = newIp, stack = newStack }
-    where (newIp, newStack, halt) = do_step s
-
-do_step :: State -> (Int, [Int], Bool)
-do_step (State ip st code) =
+step :: State Int -> Either () (State Int)
+step s@(State ip st out code) =
     case getInst ip code of
-        Push    x -> (ip+1, x:st, False)
-        Halt      -> (ip+1, st, True)
+        Push    x -> Right $ state{ stack = x:st }
+        Swap      -> Right $ swap  st
+        Dup       -> Right $ dup   st
+        Drop      -> Right $ drop  st
+        Print     -> Right $ print st out
+        Halt      -> Left  ()
         Builtin b -> case b of
-            Add -> (ip+1, add st, False)
-            Sub -> (ip+1, sub st, False)
-    where add (b:a:xs) = (a+b):xs
-          sub (b:a:xs) = (a-b):xs
+            Add -> Right $ add st
+            Sub -> Right $ sub st
+    where state = s{ ip = (ip+1) }
+          swap (b:a:xs)     = state{ stack =   a:b:xs }
+          dup  (  a:xs)     = state{ stack =   a:a:xs }
+          drop (  a:xs)     = state{ stack =       xs }
+          print(  a:xs) out = state{ stack =       xs, out = out++show a++"\n" }
+          add  (b:a:xs)     = state{ stack = (a+b):xs }
+          sub  (b:a:xs)     = state{ stack = (a-b):xs }
 
 getInst :: Eq a => a -> [(a, b)] -> b
 getInst ip = snd . head . filter ((ip==) . fst)
