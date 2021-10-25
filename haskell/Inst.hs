@@ -6,6 +6,10 @@ import qualified Utils
 
 type Program = [(Int, Inst)]
 
+data TypeSig
+    = I64
+    deriving Show
+
 data Builtin
     = Add
     | Sub

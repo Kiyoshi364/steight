@@ -25,8 +25,9 @@ main = do
     prog <- case P.value parsed of
         Left  l -> putStrLn l >> return [(0, Halt)]
         Right r ->               return r
-    putStrLn "=== simulation ==="
-    simulate prog
+    ok <- typecheck prog
+    if ok then putStrLn "=== simulation ===" >> simulate prog
+          else return $ begin [(0, Halt)]
     return ()
 
 wsP :: P.Parser [String]
