@@ -79,6 +79,14 @@ instance Alternative Parser where
             Parsed _ (Left  _) -> p2 input
             x -> x
 
+failP :: String -> Parser a
+failP s = Parser $ \ input -> Parsed input $ Left s
+
+eofP :: Parser ()
+eofP = Parser $ \ input -> case input of
+    I _ [] -> Parsed input $ Right ()
+    I _ xs -> Parsed input $ Left $ "expected <eof>, found " ++ xs
+
 charP :: Char -> Parser Char
 charP c = Parser $ \ input -> case expect c input of
     Just (I l xs) -> Parsed (I l xs) $ Right c
@@ -89,6 +97,9 @@ spaceP = charP ' '
 
 wsP :: Parser String
 wsP = some $ spaceP <|> charP '\t'
+
+lfP :: Parser String
+lfP = some $ charP '\n' <|> charP '\r'
 
 strP :: String -> Parser String
 strP = sequenceA . map charP
@@ -101,6 +112,9 @@ spanP f = Parser $ \ input@(I loc xs) ->
                 Just inp -> inp
                 Nothing  -> error "This should not happen!"
         in Parsed input' $ Right parsed
+
+wordP :: Parser String
+wordP = spanP $ and . flip map (map (/=) [' ', '\t', '\r', '\n']) . flip ($)
 
 numP :: Parser Int
 numP = Parser $ \ input ->
@@ -123,3 +137,7 @@ optP (Parser p) = Parser $ \ input ->
     case p input of
         Parsed input' (Left  _) -> Parsed input' $ Right $ Nothing
         Parsed input' (Right x) -> Parsed input' $ Right $ Just x
+
+untilEof :: Parser a -> Parser [a]
+untilEof p = (eofP *> pure []) <|> ((:) <$> p <*> rec)
+    where rec = untilEof p
