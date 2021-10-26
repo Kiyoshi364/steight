@@ -103,6 +103,9 @@ wsP = some $ spaceP <|> charP '\t'
 lfP :: Parser String
 lfP = some $ charP '\n' <|> charP '\r'
 
+whiteP :: Parser String
+whiteP = concat <$> many (wsP <|> lfP)
+
 strP :: String -> Parser String
 strP = sequenceA . map charP
 -- strP = traverse charP -- alternativa

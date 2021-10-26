@@ -1,43 +1,44 @@
 module Typecheck where
 
 import Inst
-import Simulation (State(State, ip, stack), begin, getInst)
+import Utils (fork)
+import Control.Monad ((>=>))
 
-typecheck :: Program -> IO Bool
-typecheck code = do
-    merr <- return $ loop step $ begin code
-    case merr of
-        Just (x, err) -> putStrLn err   >> return False
-        Nothing       -> putStrLn "Ok!" >> return True
+typecheck :: Program -> IO (Program, Bool)
+typecheck prog = case typeblock $ code prog of
+    Left  err
+        -> putStrLn err >> return (Program [Halt], False)
+    Right b@(Block inp out is)
+        -> if inp == [] && out == []
+            then putStrLn "Typecheck ok!" >> return (Program [Blk b], True)
+            else putStrLn
+                ("First Block should be of type [ -- ], but it's of type " ++
+                tpp b)
+                >> return (Program [Halt], False)
 
-loop :: (a -> (a, Either Bool b)) -> a -> Maybe (a, b)
-loop f x = case f x of
-        (x', Right b    ) -> Just (x, b)
-        (x', Left  False) -> Nothing
-        (x', Left  True ) -> loop f x'
+typeblock :: [Inst] -> Either String Block
+typeblock = do_typeblock [] [] . Block [] []
 
-step :: State TypeSig -> (State TypeSig, Either Bool String)
-step s@(State ip st _ code) =
-    case getInst ip code of
-        Push    x -> (state{ stack = I64:st }, Left True )
-        Swap      -> swap st
-        Dup       -> dup  st
-        Drop      -> drop st
-        Print     -> drop st
-        Halt      -> halt st
-        Builtin b -> case b of
-            Add -> add st
-            Sub -> sub st
-    where state = s{ ip = (ip+1) }
-          swap (   y:x:xs) = (state{ stack = x:y:xs }, Left  True )
-          swap         xs  = (state{ stack =     [] }, Right$"`swap` expected a b, found" ++ show xs)
-          dup  (     x:xs) = (state{ stack = x:x:xs }, Left  True )
-          dup          xs  = (state{ stack =     [] }, Right$"`dup` expected t, found []")
-          drop (     x:xs) = (state{ stack =     xs }, Left  True )
-          drop         []  = (state{ stack =     [] }, Right$"`drop` expected t, found []")
-          halt         []  = (state{ stack =     [] }, Left  False)
-          halt         xs  = (state{ stack =     xs }, Right$ "`End of Block` expected [], found " ++ show xs)
-          add (I64:I64:xs) = (state{ stack = I64:xs }, Left  True )
-          add          xs  = (state{ stack =     xs }, Right$"`+` expected I64 I64, found " ++ show xs)
-          sub (I64:I64:xs) = (state{ stack = I64:xs }, Left  True )
-          sub          xs  = (state{ stack =     xs }, Right$"`-` expected I64 I64, found " ++ show xs)
+do_typeblock :: [Inst] -> [TypeSig] -> Block -> Either String Block
+do_typeblock ris st (Block inp []  []   ) = Right $ Block inp st $ reverse ris
+do_typeblock ris st (Block inp [] (i:is)) = do
+    ((inps, outs), inst) <- case i of
+        Doblk xs -> typeblock xs >>= return . fork (,) instTyp id . Blk
+        _  -> return $ fork (,) instTyp id i
+    case match inps st of
+        Just (Left  ys) ->
+            do_typeblock (inst:ris) (outs ++ []) (Block (inp ++ ys) [] is)
+        Just (Right xs) ->
+            do_typeblock (inst:ris) (outs ++ xs) (Block (inp      ) [] is)
+        Nothing         ->
+            Left $ "Instruction `" ++ show i ++ "` expected " ++ show inps ++
+            " but found `" ++ show st ++ "`"
+do_typeblock ris st blk = Left $ "Non-exhaustive pattern: do_typeblock (" ++
+    show ris ++ ") (" ++ show st ++ ") (" ++ show blk ++ ")"
+
+match :: Eq a => [a] -> [a] -> Maybe (Either [a] [a])
+match  []       xs  = Just $ Right xs
+match    ys     []  = Just $ Left  ys
+match (y:ys) (x:xs)
+    | x == y        = match ys xs
+    | otherwise     = Nothing
