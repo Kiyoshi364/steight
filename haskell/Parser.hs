@@ -7,7 +7,8 @@ type Column = Int
 type Lines = Int
 data Loc = L FilePath Lines Column
 
-instance Show Loc where show (L path ln cn) = path++"."++show ln++"."++ show cn
+instance Show Loc where
+    show (L path ln cn) = path++"."++show ln++"."++ show cn
 
 mkLoc :: FilePath -> Loc
 mkLoc path = L path 1 1
@@ -85,12 +86,13 @@ failP s = Parser $ \ input -> Parsed input $ Left s
 eofP :: Parser ()
 eofP = Parser $ \ input -> case input of
     I _ [] -> Parsed input $ Right ()
-    I _ xs -> Parsed input $ Left $ "expected <eof>, found " ++ xs
+    I _ xs -> Parsed input $ Left $ "expected <eof>, found `" ++ xs ++ "`"
 
 charP :: Char -> Parser Char
 charP c = Parser $ \ input -> case expect c input of
     Just (I l xs) -> Parsed (I l xs) $ Right c
-    Nothing       -> Parsed input $ Left $ "expected `" ++ [c] ++ "`, found " ++ nextChar input
+    Nothing       -> Parsed input $ Left $
+        "expected `" ++ [c] ++ "`, found `" ++ nextChar input ++ "`"
 
 spaceP :: Parser Char
 spaceP = charP ' '
