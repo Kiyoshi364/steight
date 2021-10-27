@@ -18,13 +18,14 @@ data Block = Block
     }
 
 tpp :: Block -> String
-tpp (Block inp out _) = "[ " ++
+tpp (Block []  []  _) = ""
+tpp (Block inp out _) = " [ " ++
     (if inp == [] then "" else show inp) ++ " -- " ++
     (if out == [] then "" else show out) ++ " ]"
 
 instance Show Block where
     show b@(Block inp out inst)
-        = "do "++ tpp b ++ " " ++
+        = "do" ++ tpp b ++ " " ++
         foldr (\ i s -> show i ++ " " ++ s) "" inst ++ "end"
 
 data TypeSig
