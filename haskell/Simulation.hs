@@ -51,6 +51,8 @@ step s@(State st out p@(Program code)) =
                     Sub -> Right $ sub st
                 Doblk iis -> Left  $
                     Left "Atempting to step through a `do-block`"
+                Typblk ips ots iis -> Left  $
+                    Left "Atempting to step through a `typed-do-block`"
                 Blk     b -> let
                     iis = insts b
                     s2 = fst $ loop step s{ prog = p{ code = iis } }

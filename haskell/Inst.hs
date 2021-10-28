@@ -16,18 +16,23 @@ data Block = Block
     , outT  :: [TypeSig]
     , insts :: [Inst]
     }
+    deriving Eq
 
-tpp :: Block -> String
-tpp (Block []  []  _) = ""
-tpp (Block inp out _) = " [ " ++
+tpp :: ([TypeSig], [TypeSig]) -> String
+tpp ([]  , [] ) = ""
+tpp (inp , out) = "[ " ++
     (if inp == [] then "" else revcat inp) ++ "-- " ++
     (if out == [] then "" else revcat out) ++ "]"
     where revcat  []    = ""
           revcat (x:xs) = foldl (\s t -> show t ++ ", " ++ s) (show x ++ " ") xs
 
+tpp' :: ([TypeSig], [TypeSig]) -> String
+tpp' ([]  , [] ) = "[ -- ]"
+tpp' (inp , out) = tpp (inp, out)
+
 instance Show Block where
-    show b@(Block inp out inst)
-        = "do" ++ tpp b ++ " " ++
+    show (Block inp out inst)
+        = "do " ++ tpp (inp, out) ++ " " ++
         foldr (\ i s -> show i ++ " " ++ s) "" inst ++ "end"
 
 data TypeSig
@@ -37,6 +42,7 @@ data TypeSig
 data Builtin
     = Add
     | Sub
+    deriving Eq
 
 instance Show Builtin where
     show (Add   ) = "+"
@@ -51,7 +57,9 @@ data Inst
     | Halt
     | Builtin Builtin
     | Doblk [Inst]
+    | Typblk [TypeSig] [TypeSig] [Inst]
     | Blk Block
+    deriving Eq
 
 instance Show Inst where
     show (Push    x) = show x
@@ -61,7 +69,9 @@ instance Show Inst where
     show (Print    ) = "print"
     show (Halt     ) = "halt"
     show (Builtin b) = show b
-    show (Doblk  is) = "do "++
+    show (Doblk  is) = "do " ++
+        foldr (\ i s -> show i ++ " " ++ s) "" is ++ "end"
+    show (Typblk inp out is) = "do <" ++ tpp (inp, out) ++ "> " ++
         foldr (\ i s -> show i ++ " " ++ s) "" is ++ "end"
     show (Blk     b) = show b
 
@@ -74,7 +84,7 @@ instP = pushP
     <|> swapP <|> dupP <|> dropP
     <|> printP <|> haltP
     <|> builtinP
-    <|> doblkP
+    <|> typblkP <|> doblkP
     <|> eofP *> pure Halt <|> errP
 
 pushP :: Parser Inst
@@ -108,6 +118,22 @@ doblkP :: Parser Inst
 doblkP = fmap Doblk
     (strP "do" *> whiteP *> some (instP <* whiteP) <* strP "end")
 
+typblkP :: Parser Inst
+typblkP = fmap (uncurry Typblk)
+    (strP "do" *> whiteP *> btypP)
+    <*> (some (instP <* whiteP) <* strP "end")
+
+btypP :: Parser ([TypeSig], [TypeSig])
+btypP = fmap (\a b -> (a, b))
+    (charP '[' *> whiteP *> sttypP <* strP "--")
+    <*> (whiteP *> sttypP <* whiteP <* charP ']' <* whiteP)
+
+sttypP :: Parser [TypeSig]
+sttypP = many (typP <* optP (charP ',') <* whiteP)
+
+typP :: Parser TypeSig
+typP = strP "I64" *> pure I64
+
 -- blockP :: Parser Block
 -- blockP = Block [] [] <$>
 --     (strP "do" *> whiteP *> some (instP <* whiteP) <* strP "end")
@@ -134,4 +160,5 @@ instTyp i = case i of
     Halt      -> ([]         , []        )
     Builtin b -> builtinTyp b
     Doblk   b -> undefined
+    Typblk i o s -> undefined
     Blk     b -> (inpT b     , outT b    )
