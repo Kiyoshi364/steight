@@ -28,7 +28,7 @@ main = do
     putStrLn $ show prog
     (p', ok) <- typecheck prog
     putStrLn $ show p'
-    if ok then putStrLn "=== simulation ===" >> simulate prog
+    if ok then putStrLn "=== simulation ===" >> simulate p'
           else return $ begin $ Program [Halt]
     return ()
 
