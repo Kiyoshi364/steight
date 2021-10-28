@@ -80,6 +80,12 @@ instance Alternative Parser where
             Parsed _ (Left  _) -> p2 input
             x -> x
 
+instance Monad Parser where
+    (Parser p1) >>= f = Parser $
+        \ input -> case p1 input of
+            Parsed input' (Left  err) -> Parsed input' (Left  err)
+            Parsed input' (Right  x ) -> runP (f x) input'
+
 failP :: String -> Parser a
 failP s = Parser $ \ input -> Parsed input $ Left s
 
@@ -107,7 +113,9 @@ whiteP :: Parser String
 whiteP = concat <$> many (wsP <|> lfP)
 
 strP :: String -> Parser String
-strP = sequenceA . map charP
+strP str = (<|>) (sequenceA $ map charP str)
+    (wordP >>= failP .
+        (\s -> "expected `" ++ str ++ "`, found `" ++ s ++ "`"))
 -- strP = traverse charP -- alternativa
 
 spanP :: (Char -> Bool) -> Parser String
