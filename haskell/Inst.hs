@@ -119,6 +119,11 @@ errP = Parser $
           str' l s = show l ++ ": Unknown word found: `" ++ s ++ "`"
           word = either undefined id . value . runP wordP
 
+builtinTyp :: Builtin -> ([TypeSig], [TypeSig])
+builtinTyp b = case b of
+    Add -> ([I64, I64] , [I64])
+    Sub -> ([I64, I64] , [I64])
+
 instTyp :: Inst -> ([TypeSig], [TypeSig])
 instTyp i = case i of
     Push    x -> ([]         , [I64]     )
@@ -127,6 +132,6 @@ instTyp i = case i of
     Drop      -> ([I64]      , []        )
     Print     -> ([I64]      , []        )
     Halt      -> ([]         , []        )
-    Builtin b -> ([I64, I64] , [I64]     )
+    Builtin b -> builtinTyp b
     Doblk   b -> undefined
     Blk     b -> (inpT b     , outT b    )
