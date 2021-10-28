@@ -20,8 +20,10 @@ data Block = Block
 tpp :: Block -> String
 tpp (Block []  []  _) = ""
 tpp (Block inp out _) = " [ " ++
-    (if inp == [] then "" else show inp) ++ " -- " ++
-    (if out == [] then "" else show out) ++ " ]"
+    (if inp == [] then "" else revcat inp) ++ "-- " ++
+    (if out == [] then "" else revcat out) ++ "]"
+    where revcat  []    = ""
+          revcat (x:xs) = foldl (\s t -> show t ++ ", " ++ s) (show x ++ " ") xs
 
 instance Show Block where
     show b@(Block inp out inst)
