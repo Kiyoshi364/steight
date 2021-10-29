@@ -65,7 +65,7 @@ instance Show Inst where
     show (Push    x) = show x
     show (Swap     ) = "~"
     show (Dup      ) = ":"
-    show (Drop     ) = ","
+    show (Drop     ) = "."
     show (Print    ) = "print"
     show (Halt     ) = "halt"
     show (Builtin b) = show b
@@ -97,7 +97,7 @@ dupP  :: Parser Inst
 dupP  = (strP "dup" <|> strP ":") *> pure Dup
 
 dropP :: Parser Inst
-dropP = (strP "drop" <|> strP ",") *> pure Drop
+dropP = (strP "drop" <|> strP ".") *> pure Drop
 
 printP :: Parser Inst
 printP = strP "print" *> pure Print
@@ -129,7 +129,7 @@ btypP = fmap (\a b -> (a, b))
     <*> (whiteP *> sttypP <* whiteP <* charP ']' <* whiteP)
 
 sttypP :: Parser [TypeSig]
-sttypP = many (typP <* optP (charP ',') <* whiteP)
+sttypP = many (typP <* whiteP)
 
 typP :: Parser TypeSig
 typP = strP "I64" *> pure I64
