@@ -4,19 +4,10 @@ import Parser
 import Control.Applicative
 import qualified Utils
 
-data Program = Program
-    { code :: [Inst]
-    -- { main :: String
-    -- , dict :: [(String, Block)]
+data AST = AST
+    { dict :: [(String, [Inst])]
     }
     deriving Show
-
-data Block = Block
-    { inpT  :: [TypeSig]
-    , outT  :: [TypeSig]
-    , insts :: [Inst]
-    }
-    deriving Eq
 
 tpp :: ([TypeSig], [TypeSig]) -> String
 tpp ([]  , [] ) = ""
@@ -30,10 +21,8 @@ tpp' :: ([TypeSig], [TypeSig]) -> String
 tpp' ([]  , [] ) = "[ -- ]"
 tpp' (inp , out) = tpp (inp, out)
 
-instance Show Block where
-    show (Block inp out inst)
-        = "do " ++ tpp (inp, out) ++ " " ++
-        foldr (\ i s -> show i ++ " " ++ s) "" inst ++ "end"
+ipp :: Show a => [a] -> String
+ipp = foldr (\ i s -> show i ++ " " ++ s) ""
 
 data TypeSig
     = I64
@@ -57,8 +46,8 @@ data Inst
     | Halt
     | Builtin Builtin
     | Doblk [Inst]
+    | Nameblk String [Inst]
     | Typblk [TypeSig] [TypeSig] [Inst]
-    | Blk Block
     deriving Eq
 
 instance Show Inst where
@@ -69,15 +58,15 @@ instance Show Inst where
     show (Print    ) = "print"
     show (Halt     ) = "halt"
     show (Builtin b) = show b
-    show (Doblk  is) = "do " ++
-        foldr (\ i s -> show i ++ " " ++ s) "" is ++ "end"
+    show (Doblk  is) = "do " ++ ipp is ++ "end"
     show (Typblk inp out is) = "do <" ++ tpp (inp, out) ++ "> " ++
-        foldr (\ i s -> show i ++ " " ++ s) "" is ++ "end"
-    show (Blk     b) = show b
+        ipp is ++ "end"
+    show (Nameblk name is) = "block " ++ name ++ " " ++ ipp is ++ "end"
 
-lexer :: Parser [Inst]
-lexer = fmap (\i -> case i of Doblk is -> is; _ -> []) doblkP
--- lexer = fmap (zip [0..]) $ untilEof $ many (wsP <|> lfP) *> instP
+lexer :: Parser AST
+lexer = fmap AST $ some $
+    fmap (\i -> case i of Nameblk s is -> (s, is); _ -> ("", [Halt]))
+    (nameblkP <* whiteP)
 
 instP :: Parser Inst
 instP = pushP
@@ -85,6 +74,7 @@ instP = pushP
     <|> printP <|> haltP
     <|> builtinP
     <|> typblkP <|> doblkP
+    <|> nameblkP
     <|> eofP *> pure Halt <|> errP
 
 pushP :: Parser Inst
@@ -116,12 +106,20 @@ subP = charP '-' *> pure Sub
 
 doblkP :: Parser Inst
 doblkP = fmap Doblk
-    (strP "do" *> whiteP *> some (instP <* whiteP) <* strP "end")
+    (strP "do" *> whiteP *> instseqP <* strP "end")
+
+nameblkP :: Parser Inst
+nameblkP = fmap Nameblk
+    (strP "block" *> whiteP *> wordP <* whiteP)
+    <*> (instseqP <* strP "end")
 
 typblkP :: Parser Inst
 typblkP = fmap (uncurry Typblk)
     (strP "do" *> whiteP *> btypP)
-    <*> (some (instP <* whiteP) <* strP "end")
+    <*> (instseqP <* strP "end")
+
+instseqP :: Parser [Inst]
+instseqP = some $ instP <* whiteP
 
 btypP :: Parser ([TypeSig], [TypeSig])
 btypP = fmap (\a b -> (a, b))
@@ -133,10 +131,6 @@ sttypP = many (typP <* whiteP)
 
 typP :: Parser TypeSig
 typP = strP "I64" *> pure I64
-
--- blockP :: Parser Block
--- blockP = Block [] [] <$>
---     (strP "do" *> whiteP *> some (instP <* whiteP) <* strP "end")
 
 errP :: Parser Inst
 errP = Parser $
@@ -160,5 +154,5 @@ instTyp i = case i of
     Halt      -> ([]         , []        )
     Builtin b -> builtinTyp b
     Doblk   b -> undefined
+    Nameblk s b -> undefined
     Typblk i o s -> undefined
-    Blk     b -> (inpT b     , outT b    )

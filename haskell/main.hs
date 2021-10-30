@@ -1,9 +1,10 @@
 module Main (main) where
 
 import qualified Parser as P
-import Inst (Inst, Inst(..), Builtin(..), Block(..), lexer, Program(..))
-import Simulation (simulate, begin)
-import Typecheck (typecheck)
+import Inst (Inst, Inst(..), Builtin(..), lexer, AST(..))
+import IR (Program(Program), Block(..))
+import Typecheck (typecheck, typeblock)
+import Simulation (simulate)
 import Control.Applicative
 import System.Environment
 
@@ -23,17 +24,14 @@ main = do
     -- putStrLn $ (++) "parsed: " $ either ("error: "++) (pp) $ P.value parsed
     -- putStrLn $ (++) "leftover: " $ show $ P.input parsed
     prog <- case P.value parsed of
-        Left  l -> putStrLn l >> (return $ Program [Halt])
-        Right r ->                return $ Program r
+        Left  l -> putStrLn l >> return (AST [("main", [])])
+        Right r ->               return  r
     putStrLn $ show prog
     (p', ok) <- typecheck prog
     putStrLn $ show p'
     if ok then putStrLn "=== simulation ===" >> simulate p'
-          else return $ begin $ Program [Halt]
+          else simulate $ Program [("main", Block [] [] [])]
     return ()
-
-tprog :: Program
-tprog = Program iprog
 
 iprog :: [Inst]
 iprog = [
@@ -41,5 +39,11 @@ iprog = [
     Dup, Print, Push 3, Swap, Builtin Sub, Print
     ]
 
-pp :: Program -> String
-pp = foldr (\ t -> ((show t ++ ", ") ++)) "" . code
+bprog :: Block
+bprog = either (const $ Block [] [] []) id $ typeblock iprog
+
+tprog :: Program
+tprog = Program [("main", bprog)]
+
+pp :: AST -> String
+pp = foldr (\ t -> ((show t ++ ", ") ++)) "" . dict
