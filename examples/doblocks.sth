@@ -1,0 +1,10 @@
+block main
+    do 1 : + end print
+    do [ -- I64] 2 : - end print
+    do
+        3 : +
+    end print
+    5 do [ -- I64 ]
+        4
+    end + print
+end
