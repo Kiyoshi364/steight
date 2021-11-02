@@ -1,32 +1,26 @@
-module Inst where
+module Inst
+    ( AST(..)
+    , Builtin(..)
+    , Inst(..)
+    , ipp
+    , instTyp
+    , lexer
+    ) where
 
 import Parser
 import Control.Applicative
+import Types (TypeSig(..), ConstT(..))
+import Types.Parsing (typeP)
 import qualified Utils
 
 data AST = AST
     { dict :: [(String, [Inst])]
     }
-    deriving Show
 
-tpp :: ([TypeSig], [TypeSig]) -> String
-tpp ([]  , [] ) = ""
-tpp (inp , out) = "[ " ++
-    (if inp == [] then "" else revcat inp) ++ "-- " ++
-    (if out == [] then "" else revcat out) ++ "]"
-    where revcat  []    = ""
-          revcat (x:xs) = foldl (\s t -> show t ++ ", " ++ s) (show x ++ " ") xs
-
-tpp' :: ([TypeSig], [TypeSig]) -> String
-tpp' ([]  , [] ) = "[ -- ]"
-tpp' (inp , out) = tpp (inp, out)
+instance Show AST where show (AST ds) = "AST " ++ show ds
 
 ipp :: Show a => [a] -> String
 ipp = foldr (\ i s -> show i ++ " " ++ s) ""
-
-data TypeSig
-    = I64
-    deriving (Show, Eq)
 
 data Builtin
     = Add
@@ -47,7 +41,7 @@ data Inst
     | Builtin Builtin
     | Doblk [Inst]
     | Nameblk String [Inst]
-    | Typblk [TypeSig] [TypeSig] [Inst]
+    | Typblk TypeSig [Inst]
     deriving Eq
 
 instance Show Inst where
@@ -59,7 +53,7 @@ instance Show Inst where
     show (Halt     ) = "halt"
     show (Builtin b) = show b
     show (Doblk  is) = "do " ++ ipp is ++ "end"
-    show (Typblk inp out is) = "do <" ++ tpp (inp, out) ++ "> " ++
+    show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
         ipp is ++ "end"
     show (Nameblk name is) = "block " ++ name ++ " " ++ ipp is ++ "end"
 
@@ -114,23 +108,12 @@ nameblkP = fmap Nameblk
     <*> (instseqP <* strP "end")
 
 typblkP :: Parser Inst
-typblkP = fmap (uncurry Typblk)
-    (strP "do" *> whiteP *> btypP)
+typblkP = fmap Typblk
+    (strP "do" *> whiteP *> typeP)
     <*> (instseqP <* strP "end")
 
 instseqP :: Parser [Inst]
 instseqP = some $ instP <* whiteP
-
-btypP :: Parser ([TypeSig], [TypeSig])
-btypP = fmap (\a b -> (a, b))
-    (charP '[' *> whiteP *> sttypP <* strP "--")
-    <*> (whiteP *> sttypP <* whiteP <* charP ']' <* whiteP)
-
-sttypP :: Parser [TypeSig]
-sttypP = many (typP <* whiteP)
-
-typP :: Parser TypeSig
-typP = strP "I64" *> pure I64
 
 errP :: Parser Inst
 errP = Parser $
@@ -139,20 +122,23 @@ errP = Parser $
           str' l s = show l ++ ": Unknown word found: `" ++ s ++ "`"
           word = either undefined id . value . runP wordP
 
-builtinTyp :: Builtin -> ([TypeSig], [TypeSig])
-builtinTyp b = case b of
-    Add -> ([I64, I64] , [I64])
-    Sub -> ([I64, I64] , [I64])
+i64 :: TypeSig
+i64 = Tconst I64
 
-instTyp :: Inst -> ([TypeSig], [TypeSig])
+builtinTyp :: Builtin -> TypeSig
+builtinTyp b = case b of
+    Add -> Tfunc [ i64, i64 ] [ i64 ]
+    Sub -> Tfunc [ i64, i64 ] [ i64 ]
+
+instTyp :: Inst -> TypeSig
 instTyp i = case i of
-    Push    x -> ([]         , [I64]     )
-    Swap      -> ([I64, I64] , [I64, I64])
-    Dup       -> ([I64]      , [I64, I64])
-    Drop      -> ([I64]      , []        )
-    Print     -> ([I64]      , []        )
-    Halt      -> ([]         , []        )
+    Push    x -> Tconst                     I64
+    Swap      -> Tfunc [ Tvar 0, Tvar 1 ] [ Tvar 1, Tvar 0 ]
+    Dup       -> Tfunc [ Tvar 0         ] [ Tvar 0, Tvar 0 ]
+    Drop      -> Tfunc [ Tvar 0         ] [                ]
+    Print     -> Tfunc [ Tvar 0         ] [                ]
+    Halt      -> Tfunc [                ] [                ]
     Builtin b -> builtinTyp b
     Doblk   b -> undefined
     Nameblk s b -> undefined
-    Typblk i o s -> undefined
+    Typblk t s -> undefined

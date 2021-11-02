@@ -2,7 +2,7 @@ module Main (main) where
 
 import qualified Parser as P
 import Inst (Inst, Inst(..), Builtin(..), lexer, AST(..))
-import IR (Program(Program), Block(..))
+import IR (Program(Program), Block(..), emptyBlock)
 import Typecheck (typecheck, typeblock)
 import Simulation (simulate)
 import Control.Applicative
@@ -30,7 +30,7 @@ main = do
     (p', ok) <- typecheck prog
     putStrLn $ show p'
     if ok then putStrLn "=== simulation ===" >> simulate p'
-          else simulate $ Program [("main", Block [] [] [])]
+          else simulate $ Program [("main", emptyBlock)]
     return ()
 
 iprog :: [Inst]
@@ -40,7 +40,7 @@ iprog = [
     ]
 
 bprog :: Block
-bprog = either (const $ Block [] [] []) id $ typeblock iprog
+bprog = either (const emptyBlock) id $ typeblock iprog
 
 tprog :: Program
 tprog = Program [("main", bprog)]

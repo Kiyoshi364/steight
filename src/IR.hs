@@ -1,28 +1,34 @@
-module IR where
+module IR
+    ( Program(..)
+    , Block(..)
+    , IRInst(..)
+    , emptyBlock
+    ) where
 
-import Inst (Inst, Builtin(..), ipp, tpp, TypeSig, instTyp)
+import Types (TypeSig(..))
+import Inst (Inst, Builtin(..), ipp, instTyp)
 import qualified Inst
 import Utils (fork)
 
 data Program = Program
     { dict :: [(String, Block)]
     }
-    deriving Show
+
+instance Show Program where show (Program ds) = "Program " ++ show ds
 
 data Block = Block
-    { inpT  :: [TypeSig]
-    , outT  :: [TypeSig]
+    { typT  :: TypeSig
     , insts :: [IRInst]
     }
     deriving Eq
 
 instance Show Block where
-    show (Block inp out is)
-        = "do " ++ tpp (inp, out) ++ " " ++
+    show (Block typ is)
+        = "do " ++ show typ ++ " " ++
         ipp is ++ "end"
 
-blockTyp :: Block -> ([TypeSig], [TypeSig])
-blockTyp = fork (,) inpT outT
+emptyBlock :: Block
+emptyBlock = Block (Tfunc [] []) []
 
 data IRInst
     = Push Int

@@ -1,4 +1,4 @@
-module Simulation where
+module Simulation (simulate) where
 
 import Inst (Builtin(..))
 import IR (Program(..), Block(..), IRInst(..))
