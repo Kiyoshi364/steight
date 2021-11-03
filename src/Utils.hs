@@ -1,10 +1,18 @@
-module Utils (fork, hook, assert, assertWith, mapFst, mapSnd) where
+module Utils
+    ( fork, hook
+    , assert, assertWith
+    , onFst, onSnd, onPair, dup
+    ) where
+
+-- Combinators
 
 fork :: (a1 -> a2 -> b) -> (a -> a1) -> (a -> a2) -> a -> b
 fork h f g x = h (f x) $ g x
 
 hook :: (a -> a' -> b) -> (a -> a') -> a -> b
-hook h f x = h x $ f x
+hook h = fork h id
+
+-- Assertions
 
 assert :: Eq a => a -> (a -> String) -> a -> Either String a
 assert = assertWith (==)
@@ -14,8 +22,16 @@ assertWith eq exp f x
     | eq exp x  = Right $ x
     | otherwise = Left  $ f x
 
-mapFst :: (a -> c) -> (a, b) -> (c, b)
-mapFst f (a, b) = (f a, b)
+-- Pair
 
-mapSnd :: (b -> c) -> (a, b) -> (a, c)
-mapSnd f (a, b) = (a, f b)
+onFst :: (a -> c) -> (a, b) -> (c, b)
+onFst f (a, b) = (f a, b)
+
+onSnd :: (b -> c) -> (a, b) -> (a, c)
+onSnd f (a, b) = (a, f b)
+
+onPair :: (a -> a', b -> b') -> (a, b) -> (a', b')
+onPair (fa, fb) = onFst fa . onSnd fb
+
+dup :: a -> (a, a)
+dup = hook (,) id

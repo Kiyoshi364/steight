@@ -8,7 +8,7 @@ module Types
     ) where
 
 import Data.List (find)
-import Utils (mapSnd)
+import Utils (onSnd)
 
 data TypeSig
     = Tconst ConstT
@@ -47,9 +47,9 @@ do_rebind d (Tvar    n) = case find ((== Right n) . fst) d of
   where i = length d
 do_rebind d (Tfunc i o) = let
     (d'  , newi) = foldl (\ (d' , ts) t ->
-        mapSnd ((ts++) . (:[])) $ do_rebind d'  t) (d , []) i
+        onSnd ((ts++) . (:[])) $ do_rebind d'  t) (d , []) i
     (newd, newo) = foldl (\ (d'', ts) t ->
-        mapSnd ((ts++) . (:[])) $ do_rebind d'' t) (d', []) o
+        onSnd ((ts++) . (:[])) $ do_rebind d'' t) (d', []) o
     in (newd, Tfunc newi newo)
 
 type Dict = [(Either Int Int, TypeSig)]
@@ -89,7 +89,7 @@ do_matches :: Dict -> [TypeSig] -> [TypeSig] -> Maybe (Dict, [TypeSig])
 do_matches d  []     []    = Just (d, [])
 do_matches d (y:ys) (x:xs) = do
     (d', t) <- do_match d y x
-    fmap (mapSnd (t:)) $ do_matches d' ys xs
+    fmap (onSnd (t:)) $ do_matches d' ys xs
 do_matches _  _      _     = Nothing
 
 try_compose :: [TypeSig] -> [TypeSig]
