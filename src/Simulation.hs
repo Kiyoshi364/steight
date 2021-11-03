@@ -3,6 +3,7 @@ module Simulation (simulate) where
 import Inst (Builtin(..))
 import IR (Program(..), Block(..), IRInst(..))
 import Utils (fork)
+import Dict (find)
 
 data State a = State
     { stack  :: [a]
@@ -11,14 +12,8 @@ data State a = State
     , code   :: [IRInst]
     } deriving Show
 
-find :: Eq a => a -> [(a, b)] -> Maybe b
-find x  []      = Nothing
-find x ((a, b):ps)
-    | x == a    = Just b
-    | otherwise = find x ps
-
 begin :: Program -> State a
-begin = fork (State [] []) id $ maybe [] insts . find "main" . dict
+begin = fork (State [] []) id $ maybe [] insts . find (=="main") . dict
 
 simulate :: Program -> IO (State Int)
 simulate code = do

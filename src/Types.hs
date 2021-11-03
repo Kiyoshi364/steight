@@ -7,8 +7,11 @@ module Types
     , fromPair
     ) where
 
-import Data.List (find)
 import Utils (onSnd)
+import qualified Dict as D (Dict)
+import Dict (find)
+
+type Dict = D.Dict (Either Int Int) TypeSig
 
 data TypeSig
     = Tconst ConstT
@@ -41,8 +44,8 @@ rebind = snd . do_rebind []
 
 do_rebind :: Dict -> TypeSig -> (Dict, TypeSig)
 do_rebind d (Tconst  c) = (                  d, Tconst c)
-do_rebind d (Tvar    n) = case find ((== Right n) . fst) d of
-    Just t  -> (                  d, snd  t)
+do_rebind d (Tvar    n) = case find (== Right n) d of
+    Just t  -> (                  d,      t)
     Nothing -> ((Right n, Tvar i):d, Tvar i)
   where i = length d
 do_rebind d (Tfunc i o) = let
@@ -52,16 +55,14 @@ do_rebind d (Tfunc i o) = let
         onSnd ((ts++) . (:[])) $ do_rebind d'' t) (d', []) o
     in (newd, Tfunc newi newo)
 
-type Dict = [(Either Int Int, TypeSig)]
-
 remapL :: Dict -> [TypeSig] -> [TypeSig]
 remapL d = map $ \ t -> case t of
-    Tvar n -> maybe t snd $ find ((== Left  n) . fst) d
+    Tvar n -> maybe t id $ find (== Left  n) d
     _      -> t
 
 remapR :: Dict -> [TypeSig] -> [TypeSig]
 remapR d = map $ \ t -> case t of
-    Tvar n -> maybe t snd $ find ((== Right n) . fst) d
+    Tvar n -> maybe t id $ find (== Right n) d
     _      -> t
 
 match :: TypeSig -> TypeSig -> Maybe TypeSig
@@ -69,12 +70,12 @@ match y = fmap snd . do_match [] y
 
 do_match :: Dict -> TypeSig -> TypeSig -> Maybe (Dict, TypeSig)
 do_match d y x = case (y, x) of
-    (          _, Tvar     nx) -> case find ((== Right nx) . fst) d of
-        Just ax -> do_match               d  y (snd ax)
-        Nothing -> Just    ((Right nx, y):d, y)
-    (Tvar     ny,           _) -> case find ((== Left  ny) . fst) d of
-        Just ay -> do_match               d  (snd ay) x
-        Nothing -> Just    ((Left  ny, x):d,          x)
+    (          _, Tvar     nx) -> case find (== Right nx) d of
+        Just ax -> do_match               d   y ax
+        Nothing -> Just    ((Right nx, y):d,  y)
+    (Tvar     ny,           _) -> case find (== Left  ny) d of
+        Just ay -> do_match               d  ay  x
+        Nothing -> Just    ((Left  ny, x):d,     x)
     (Tconst   cy, Tconst   cx) -> if y == x then Just $ (d, x) else Nothing
     (Tconst   cy, Tfunc ix ox) -> if ix == [] && ox == [y]
         then Just $ (d, y) else Nothing

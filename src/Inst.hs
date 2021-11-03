@@ -12,9 +12,10 @@ import Control.Applicative
 import Types (TypeSig(..), ConstT(..))
 import Types.Parsing (typeP)
 import qualified Utils
+import Dict (Dict)
 
 data AST = AST
-    { dict :: [(String, [Inst])]
+    { dict :: Dict String [Inst]
     }
 
 instance Show AST where show (AST ds) = "AST " ++ show ds

@@ -9,9 +9,10 @@ import Types (TypeSig(..))
 import Inst (Inst, Builtin(..), ipp, instTyp)
 import qualified Inst
 import Utils (fork)
+import Dict (Dict)
 
 data Program = Program
-    { dict :: [(String, Block)]
+    { dict :: Dict String Block
     }
 
 instance Show Program where show (Program ds) = "Program " ++ show ds
