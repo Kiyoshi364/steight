@@ -5,7 +5,7 @@ module Main
 
 import qualified Parser as P
 import Inst (Inst, Inst(..), Builtin(..), lexer, AST(..))
-import IR (Program(Program), Block(..), emptyBlock)
+import IR (Scope(Scope), Block(..), emptyBlock)
 import Typecheck (typecheck, typeblock)
 import Simulation (simulate)
 import Dict (Dict)
@@ -33,7 +33,7 @@ main = do
     (p', ok) <- typecheck prog
     putStrLn $ show p'
     _ <- if ok then putStrLn "=== simulation ===" >> simulate p'
-          else simulate $ Program [("main", emptyBlock)]
+          else simulate $ Scope [("main", emptyBlock)]
     return ()
 
 iprog :: [Inst]
@@ -45,5 +45,5 @@ iprog = [
 bprog :: Dict String Block
 bprog = either (const [("", emptyBlock)]) fst $ typeblock [] [] "main" iprog
 
-tprog :: Program
-tprog = Program bprog
+tprog :: Scope
+tprog = Scope bprog

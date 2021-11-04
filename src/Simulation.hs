@@ -1,21 +1,21 @@
 module Simulation (simulate, loop) where
 
 import Inst (Builtin(..))
-import IR (Program(..), Block(..), IRInst(..))
+import IR (Scope(..), Block(..), IRInst(..))
 import Utils (fork, loop)
 import Dict (find)
 
 data State a = State
     { stack  :: [a]
     , out    :: String
-    , prog   :: Program
+    , prog   :: Scope
     , code   :: [IRInst]
     } deriving Show
 
-begin :: Program -> State a
+begin :: Scope -> State a
 begin = fork (State [] []) id $ maybe [] insts . find (=="main") . dict
 
-simulate :: Program -> IO (State Int)
+simulate :: Scope -> IO (State Int)
 simulate p = do
     (s, rt_err) <- return $ loop step $ begin p
     either (putStrLn . ("Runtime error: "++)) return rt_err
