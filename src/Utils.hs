@@ -2,6 +2,7 @@ module Utils
     ( fork, hook
     , assert, assertWith
     , onFst, onSnd, onPair, dup
+    , loop
     ) where
 
 -- Combinators
@@ -35,3 +36,10 @@ onPair (fa, fb) = onFst fa . onSnd fb
 
 dup :: a -> (a, a)
 dup = hook (,) id
+
+-- Others
+
+loop :: (a -> Either b a) -> a -> (a, b)
+loop f x = case f x of
+        Right x' -> loop f x'
+        Left  b  -> (x, b)

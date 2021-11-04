@@ -5,7 +5,7 @@ import Inst (Inst, Inst(..), Builtin(..), lexer, AST(..))
 import IR (Program(Program), Block(..), emptyBlock)
 import Typecheck (typecheck, typeblock)
 import Simulation (simulate)
-import Control.Applicative
+import Dict (Dict)
 import System.Environment
 
 main :: IO ()
@@ -29,7 +29,7 @@ main = do
     putStrLn $ show prog
     (p', ok) <- typecheck prog
     putStrLn $ show p'
-    if ok then putStrLn "=== simulation ===" >> simulate p'
+    _ <- if ok then putStrLn "=== simulation ===" >> simulate p'
           else simulate $ Program [("main", emptyBlock)]
     return ()
 
@@ -39,11 +39,11 @@ iprog = [
     Dup, Print, Push 3, Swap, Builtin Sub, Print
     ]
 
-bprog :: Block
-bprog = either (const emptyBlock) id $ typeblock iprog
+bprog :: Dict String Block
+bprog = either (const [("", emptyBlock)]) fst $ typeblock [] [] "main" iprog
 
 tprog :: Program
-tprog = Program [("main", bprog)]
+tprog = Program bprog
 
 pp :: AST -> String
 pp = foldr (\ t -> ((show t ++ ", ") ++)) "" . dict

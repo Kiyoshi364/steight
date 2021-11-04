@@ -1,8 +1,8 @@
-module Simulation (simulate) where
+module Simulation (simulate, loop) where
 
 import Inst (Builtin(..))
 import IR (Program(..), Block(..), IRInst(..))
-import Utils (fork)
+import Utils (fork, loop)
 import Dict (find)
 
 data State a = State
@@ -24,11 +24,6 @@ simulate code = do
     putStrLn "out:"
     putStr $ out s
     return s
-
-loop :: (a -> Either b a) -> a -> (a, b)
-loop f x = case f x of
-        Right x' -> loop f x'
-        Left  b  -> (x, b)
 
 step :: State Int -> Either (Either String ()) (State Int)
 step s@(State st out prog  []   ) = step s{ code = [Halt] }
