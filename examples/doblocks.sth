@@ -1,9 +1,23 @@
 block main
+    // `do-blocks` start with a "do"
+    // and end with an "end"
+
+    // A block works like a parenthesis,
+    // but the code is naturally associative
+    // Therefore, you may not use them
     do 1 : + end print
+
+    // You may annotate the type
+    // right after the "do"
     do [ -- I64] 2 : - end print
+
+    // There is no need for the `do-block`
+    // be in a sigle line
     do
         3 : +
     end print
+
+    // Neither to be at the start of a line
     5 do [ -- I64 ]
         4
     end + print

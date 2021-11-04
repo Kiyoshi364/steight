@@ -1,6 +1,11 @@
 block main
-    1 2+
+    // Push 1, push 2, add them
+    1 2 +
+    // Duplicate the result, and print
+    // (print consumes one value)
     : print
-    3
+    // Push 4 (stack: 3 4)
+    4
+    // Swap (stack: 4 3), sub, print
     ~- print
 end

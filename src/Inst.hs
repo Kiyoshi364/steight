@@ -60,18 +60,19 @@ instance Show Inst where
 
 lexer :: Parser AST
 lexer = fmap AST $ some (
-    fmap (\i -> case i of Nameblk s is -> (s, is); _ -> ("", [Halt]))
-    (nameblkP <* whiteP)
-    ) <* eofP
+    fmap (\i -> case i of Nameblk s is -> (s, is); _ -> error "Inst.lexer")
+    (whiteP *> commentP *> nameblkP)
+    ) <* whiteP <* commentP <* eofP
 
 instP :: Parser Inst
-instP = pushP
+instP = commentP *> whiteP *>
+    (   pushP
     <|> swapP <|> dupP <|> dropP
     <|> printP <|> haltP
     <|> builtinP
     <|> typblkP <|> doblkP
     <|> nameblkP
-    <|> errP
+    <|> errP)
 
 pushP :: Parser Inst
 pushP = fmap Push numP
@@ -117,7 +118,13 @@ typblkP = fmap Typblk
 instseqP :: Parser [Inst]
 instseqP = some $ instP <* whiteP
 
-errP :: Parser Inst
+commentP :: Parser [String]
+commentP = many ( whiteP
+    *> strP "//" *> spanP (/='\n')
+    <* optP (charP '\n')
+    <* whiteP)
+
+errP :: Parser a
 errP = Parser $
     \ input -> Parsed input $ Left $ (err input)
     where err = Utils.fork str' loc word
