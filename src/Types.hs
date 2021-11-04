@@ -3,8 +3,6 @@ module Types
     , ConstT(..)
     , match
     , compose
-    , toPair
-    , fromPair
     ) where
 
 import Utils (onSnd)
@@ -30,12 +28,6 @@ data ConstT
     = I64
     deriving (Show, Eq)
 
-toPair :: TypeSig -> ([TypeSig], [TypeSig])
-toPair (Tfunc i o) = (i, o)
-
-fromPair :: ([TypeSig], [TypeSig]) -> TypeSig
-fromPair = uncurry Tfunc
-
 revcat :: Show a => [a] -> String
 revcat = foldr (\t s -> s ++ show t ++ " ") ""
 
@@ -49,10 +41,10 @@ do_rebind d (Tvar    n) = case find (== Right n) d of
     Nothing -> ((Right n, Tvar i):d, Tvar i)
   where i = length d
 do_rebind d (Tfunc i o) = let
-    (d'  , newi) = foldl (\ (d' , ts) t ->
-        onSnd ((ts++) . (:[])) $ do_rebind d'  t) (d , []) i
-    (newd, newo) = foldl (\ (d'', ts) t ->
-        onSnd ((ts++) . (:[])) $ do_rebind d'' t) (d', []) o
+    (d'  , newi) = foldl (\ (d1, ts) t ->
+        onSnd ((ts++) . (:[])) $ do_rebind d1 t) (d , []) i
+    (newd, newo) = foldl (\ (d2, ts) t ->
+        onSnd ((ts++) . (:[])) $ do_rebind d2 t) (d', []) o
     in (newd, Tfunc newi newo)
 
 remapL :: Dict -> [TypeSig] -> [TypeSig]
@@ -76,10 +68,10 @@ do_match d y x = case (y, x) of
     (Tvar     ny,           _) -> case find (== Left  ny) d of
         Just ay -> do_match               d  ay  x
         Nothing -> Just    ((Left  ny, x):d,     x)
-    (Tconst   cy, Tconst   cx) -> if y == x then Just $ (d, x) else Nothing
-    (Tconst   cy, Tfunc ix ox) -> if ix == [] && ox == [y]
+    (Tconst    _, Tconst    _) -> if y == x then Just $ (d, x) else Nothing
+    (Tconst    _, Tfunc ix ox) -> if ix == [] && ox == [y]
         then Just $ (d, y) else Nothing
-    (Tfunc iy oy, Tconst   cx) -> if iy == [] && oy == [x]
+    (Tfunc iy oy, Tconst    _) -> if iy == [] && oy == [x]
         then Just $ (d, x) else Nothing
     (Tfunc iy oy, Tfunc ix ox) -> do
         (  d', newi) <- do_matches d iy ix

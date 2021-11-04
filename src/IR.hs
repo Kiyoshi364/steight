@@ -6,9 +6,7 @@ module IR
     ) where
 
 import Types (TypeSig(..))
-import Inst (Inst, Builtin(..), ipp, instTyp)
-import qualified Inst
-import Utils (fork)
+import Inst (Builtin(..), ipp)
 import Dict (Dict)
 
 data Program = Program

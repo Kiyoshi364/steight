@@ -133,13 +133,13 @@ builtinTyp b = case b of
 
 instTyp :: Inst -> TypeSig
 instTyp i = case i of
-    Push    x -> Tconst                     I64
+    Push    _ -> Tconst                     I64
     Swap      -> Tfunc [ Tvar 0, Tvar 1 ] [ Tvar 1, Tvar 0 ]
     Dup       -> Tfunc [ Tvar 0         ] [ Tvar 0, Tvar 0 ]
     Drop      -> Tfunc [ Tvar 0         ] [                ]
     Print     -> Tfunc [ Tvar 0         ] [                ]
     Halt      -> Tfunc [                ] [                ]
     Builtin b -> builtinTyp b
-    Doblk   b -> undefined
-    Nameblk s b -> undefined
-    Typblk t s -> undefined
+    Doblk   _ -> undefined
+    Nameblk _ _ -> undefined
+    Typblk  _ _ -> undefined

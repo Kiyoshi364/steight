@@ -16,11 +16,11 @@ hook h = fork h id
 -- Assertions
 
 assert :: Eq a => a -> (a -> String) -> a -> Either String a
-assert = assertWith (==)
+assert = assertWith . (==)
 
-assertWith :: (b -> a -> Bool) -> b -> (a -> String) -> a -> Either String a
-assertWith eq exp f x
-    | eq exp x  = Right $ x
+assertWith :: (a -> Bool) -> (a -> String) -> a -> Either String a
+assertWith p f x
+    | p x       = Right $ x
     | otherwise = Left  $ f x
 
 -- Pair

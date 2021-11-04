@@ -1,4 +1,7 @@
-module Main (main) where
+module Main
+    ( main
+    , iprog, bprog, tprog
+    ) where
 
 import qualified Parser as P
 import Inst (Inst, Inst(..), Builtin(..), lexer, AST(..))
@@ -44,6 +47,3 @@ bprog = either (const [("", emptyBlock)]) fst $ typeblock [] [] "main" iprog
 
 tprog :: Program
 tprog = Program bprog
-
-pp :: AST -> String
-pp = foldr (\ t -> ((show t ++ ", ") ++)) "" . dict

@@ -20,12 +20,12 @@ inc (L p ln cn) x
     | otherwise = L p  ln    (cn+1)
 
 data Input = I
-    { loc :: Loc
-    , str :: String
+    { loc    :: Loc
+    , string :: String
     }
 
 instance Show Input where
-    show (I loc str) = show loc ++":"++ str
+    show (I lc str) = show lc ++":"++ str
 
 mkPathInput :: FilePath -> String -> Input
 mkPathInput = I . mkLoc
@@ -38,7 +38,7 @@ nextChar (I _  []  ) = "<eof>"
 nextChar (I _ (x:_)) = [x]
 
 expect :: Char -> Input -> Maybe Input
-expect c (I _  []   ) = Nothing
+expect _ (I _  []   ) = Nothing
 expect c (I l (x:xs))
     | c == x          = Just (I (inc l x) xs)
     | otherwise       = Nothing
@@ -48,13 +48,13 @@ expects  []    = Just
 expects (x:xs) = (>>= expects xs) . expect x
 
 data Parsed a = Parsed
-    { input :: Input
+    { inputP :: Input
     , value :: Either String a
     }
 
 instance Show a => Show (Parsed a) where
-    show (Parsed (I l xs) (Left err)) = "<"++ show l ++": "++ err        ++">"
-    show (Parsed  input   (Right a )) = "["++ show a ++", "++ show input ++"]"
+    show (Parsed (I l _) (Left err)) = "<"++ show l ++": "++ err        ++">"
+    show (Parsed  input  (Right a )) = "["++ show a ++", "++ show input ++"]"
 
 instance Functor Parsed where
     fmap f (Parsed input x) = Parsed input $ fmap f x
@@ -119,8 +119,8 @@ strP str = (<|>) (sequenceA $ map charP str)
 -- strP = traverse charP -- alternativa
 
 spanP :: (Char -> Bool) -> Parser String
-spanP f = Parser $ \ input@(I loc xs) ->
-    let (parsed, rest) = span f xs
+spanP f = Parser $ \ input@(I _ xs) ->
+    let (parsed, _) = span f xs
         input' = case expects parsed input of
                 Just inp -> inp
                 Nothing  -> error "This should not happen!"
