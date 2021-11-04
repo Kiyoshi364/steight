@@ -59,9 +59,10 @@ instance Show Inst where
     show (Nameblk name is) = "block " ++ name ++ " " ++ ipp is ++ "end"
 
 lexer :: Parser AST
-lexer = fmap AST $ some $
+lexer = fmap AST $ some (
     fmap (\i -> case i of Nameblk s is -> (s, is); _ -> ("", [Halt]))
     (nameblkP <* whiteP)
+    ) <* eofP
 
 instP :: Parser Inst
 instP = pushP
@@ -70,7 +71,7 @@ instP = pushP
     <|> builtinP
     <|> typblkP <|> doblkP
     <|> nameblkP
-    <|> eofP *> pure Halt <|> errP
+    <|> errP
 
 pushP :: Parser Inst
 pushP = fmap Push numP
