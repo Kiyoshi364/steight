@@ -43,6 +43,7 @@ data Inst
     | Doblk [Inst]
     | Nameblk String [Inst]
     | Typblk TypeSig [Inst]
+    | Identifier String
     deriving Eq
 
 instance Show Inst where
@@ -57,6 +58,7 @@ instance Show Inst where
     show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
         ipp is ++ "end"
     show (Nameblk name is) = "block " ++ name ++ " " ++ ipp is ++ "end"
+    show (Identifier ref) = "{" ++ ref ++ "}"
 
 lexer :: Parser AST
 lexer = fmap AST $ some (
@@ -72,6 +74,7 @@ instP = commentP *> whiteP *>
     <|> builtinP
     <|> typblkP <|> doblkP
     <|> nameblkP
+    <|> identifierP
     <|> errP)
 
 pushP :: Parser Inst
@@ -118,6 +121,10 @@ typblkP = fmap Typblk
 instseqP :: Parser [Inst]
 instseqP = some $ instP <* whiteP
 
+identifierP :: Parser Inst
+identifierP = fmap Identifier
+    (charP '{' *> spanP (/='}') <* charP '}')
+
 commentP :: Parser [String]
 commentP = many ( whiteP
     *> strP "//" *> spanP (/='\n')
@@ -151,3 +158,4 @@ instTyp i = case i of
     Doblk   _ -> undefined
     Nameblk _ _ -> undefined
     Typblk  _ _ -> undefined
+    Identifier _ -> undefined

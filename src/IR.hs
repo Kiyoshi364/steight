@@ -41,6 +41,7 @@ data IRInst
     | Halt
     | Builtin Builtin
     | Blk Block
+    | BlkCall String
     deriving Eq
 
 instance Show IRInst where
@@ -52,3 +53,4 @@ instance Show IRInst where
     show (Halt     ) = "halt"
     show (Builtin b) = show b
     show (Blk     b) = show b
+    show (BlkCall r) = "{" ++ r ++ "}"

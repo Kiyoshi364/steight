@@ -32,7 +32,7 @@ simulate = loop step . begin
 
 step :: State Int -> Either (Either String ()) (State Int)
 step s@(State _  _  _  []   ) = step s{ code = [Halt] }
-step s@(State st ot _ (i:is)) =
+step s@(State st ot p (i:is)) =
     let state = s{ code = is }
         swap (b:a:xs) = state{ stack =   a:b:xs }
         swap       _  = undefined
@@ -61,3 +61,12 @@ step s@(State st ot _ (i:is)) =
             iis = insts b
             s2 = fst $ loop step s{ code = iis }
             in Right $ s2{ code = is }
+        BlkCall r -> case find r $ dict p of
+            Nothing  -> Left $ Left $ "Could not find block `"
+                ++ r ++ "`"
+            Just blk -> let
+                iis = insts blk
+                (s2, err_hlt) = loop step s{ code = iis }
+                in case err_hlt of
+                    Left err -> Left $ Left err
+                    Right () -> Right $ s2{ code = is }
