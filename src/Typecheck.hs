@@ -1,4 +1,6 @@
-module Typecheck where
+module Typecheck
+    ( typecheckIO, typecheck
+    )where
 
 import Types (TypeSig(..), compose)
 import Inst (AST(..), Inst(..), instTyp)
@@ -10,12 +12,15 @@ import Dict (Dict, insert)
 type IDict  = Dict String [Inst]
 type IRDict = Dict String Block
 
-typecheck :: AST -> IO (Scope, Bool)
-typecheck ast =
-        (return $ fst $ loop iter ([], [], Inst.dict ast))
+typecheckIO :: AST -> IO (Scope, Bool)
+typecheckIO ast =
+        (return $ typecheck ast)
     >>= fork const (\ (a, b, _) -> return (b, a == []))
             (mapM putStrLn . \ (a, _, _) -> a)
     >>= (return . onFst Scope)
+
+typecheck :: AST -> ([String], IRDict, IDict)
+typecheck ast = fst $ loop iter ([], [], Inst.dict ast)
 
 iter :: ([String], IRDict, IDict) -> Either () ([String], IRDict, IDict)
 iter (   _,    _,  []          ) = Left ()

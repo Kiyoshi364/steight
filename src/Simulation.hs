@@ -1,4 +1,6 @@
-module Simulation (simulate, loop) where
+module Simulation
+    ( simulateIO, simulate
+    ) where
 
 import Inst (Builtin(..))
 import IR (Scope(..), Block(..), IRInst(..))
@@ -15,15 +17,18 @@ data State a = State
 begin :: Scope -> State a
 begin = fork (State [] []) id $ maybe [] insts . find (=="main") . dict
 
-simulate :: Scope -> IO (State Int)
-simulate p = do
-    (s, rt_err) <- return $ loop step $ begin p
+simulateIO :: Scope -> IO (State Int)
+simulateIO scp = do
+    (s, rt_err) <- return $ simulate scp
     either (putStrLn . ("Runtime error: "++)) return rt_err
     if stack s == [] then return () else
         putStrLn "stack:" >> putStrLn (show $ stack s)
     putStrLn "out:"
     putStr $ out s
     return s
+
+simulate :: Scope -> (State Int, Either String ())
+simulate = loop step . begin
 
 step :: State Int -> Either (Either String ()) (State Int)
 step s@(State _  _  _  []   ) = step s{ code = [Halt] }
