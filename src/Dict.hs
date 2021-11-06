@@ -1,8 +1,8 @@
 module Dict
     ( Dict
     , insert
-    , findPair, find
-    , partPair, part
+    , findPair, find, findPairWith, findWith
+    , partPair, part, partPairWith, partWith
     ) where
 
 import Utils (onPair, dup)
@@ -13,14 +13,26 @@ type Dict k v = [(k, v)]
 insert :: k -> v -> Dict k v -> Dict k v
 insert k v d = (k, v):d
 
-findPair :: (k -> Bool) ->  Dict k v -> Maybe (k, v)
-findPair p = L.find (p . fst)
+findPair :: Eq k => k ->  Dict k v -> Maybe (k, v)
+findPair = findPairWith . (==)
 
-find :: (k -> Bool) -> Dict k v -> Maybe v
-find = (fmap snd .) . findPair
+findPairWith :: (k -> Bool) ->  Dict k v -> Maybe (k, v)
+findPairWith p = L.find (p . fst)
 
-partPair :: (k -> Bool) -> Dict k v -> ([(k, v)], [(k, v)])
-partPair p = L.partition (p . fst)
+find :: Eq k => k -> Dict k v -> Maybe v
+find = findWith . (==)
 
-part :: (k -> Bool) -> Dict k v -> ([v], [v])
-part = (onPair (dup $ map snd) .) . partPair
+findWith :: (k -> Bool) -> Dict k v -> Maybe v
+findWith = (fmap snd .) . findPairWith
+
+partPair :: Eq k => k -> Dict k v -> ([(k, v)], [(k, v)])
+partPair = partPairWith . (==)
+
+partPairWith :: (k -> Bool) -> Dict k v -> ([(k, v)], [(k, v)])
+partPairWith p = L.partition (p . fst)
+
+part :: Eq k => k -> Dict k v -> ([v], [v])
+part = partWith . (==)
+
+partWith :: (k -> Bool) -> Dict k v -> ([v], [v])
+partWith = (onPair (dup $ map snd) .) . partPairWith

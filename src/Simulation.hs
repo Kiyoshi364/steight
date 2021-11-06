@@ -15,7 +15,7 @@ data State a = State
     } deriving Show
 
 begin :: Scope -> State a
-begin = fork (State [] []) id $ maybe [] insts . find (=="main") . dict
+begin = fork (State [] []) id $ maybe [] insts . find "main" . dict
 
 simulateIO :: Scope -> IO (State Int)
 simulateIO scp = do

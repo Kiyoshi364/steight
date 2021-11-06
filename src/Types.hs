@@ -36,7 +36,7 @@ rebind = snd . do_rebind []
 
 do_rebind :: Dict -> TypeSig -> (Dict, TypeSig)
 do_rebind d (Tconst  c) = (                  d, Tconst c)
-do_rebind d (Tvar    n) = case find (== Right n) d of
+do_rebind d (Tvar    n) = case find (Right n) d of
     Just t  -> (                  d,      t)
     Nothing -> ((Right n, Tvar i):d, Tvar i)
   where i = length d
@@ -49,12 +49,12 @@ do_rebind d (Tfunc i o) = let
 
 remapL :: Dict -> [TypeSig] -> [TypeSig]
 remapL d = map $ \ t -> case t of
-    Tvar n -> maybe t id $ find (== Left  n) d
+    Tvar n -> maybe t id $ find (Left  n) d
     _      -> t
 
 remapR :: Dict -> [TypeSig] -> [TypeSig]
 remapR d = map $ \ t -> case t of
-    Tvar n -> maybe t id $ find (== Right n) d
+    Tvar n -> maybe t id $ find (Right n) d
     _      -> t
 
 match :: TypeSig -> TypeSig -> Maybe TypeSig
@@ -62,10 +62,10 @@ match y = fmap snd . do_match [] y
 
 do_match :: Dict -> TypeSig -> TypeSig -> Maybe (Dict, TypeSig)
 do_match d y x = case (y, x) of
-    (          _, Tvar     nx) -> case find (== Right nx) d of
+    (          _, Tvar     nx) -> case find (Right nx) d of
         Just ax -> do_match               d   y ax
         Nothing -> Just    ((Right nx, y):d,  y)
-    (Tvar     ny,           _) -> case find (== Left  ny) d of
+    (Tvar     ny,           _) -> case find (Left  ny) d of
         Just ay -> do_match               d  ay  x
         Nothing -> Just    ((Left  ny, x):d,     x)
     (Tconst    _, Tconst    _) -> if y == x then Just $ (d, x) else Nothing
