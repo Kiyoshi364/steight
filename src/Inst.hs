@@ -110,7 +110,7 @@ doblkP = fmap Doblk
 
 nameblkP :: Parser Inst
 nameblkP = fmap Nameblk
-    (strP "block" *> whiteP *> wordP <* whiteP)
+    (strP "block" *> whiteP *> (identStrP <|> wordP) <* whiteP)
     <*> (instseqP <* strP "end")
 
 typblkP :: Parser Inst
@@ -122,8 +122,10 @@ instseqP :: Parser [Inst]
 instseqP = some $ instP <* whiteP
 
 identifierP :: Parser Inst
-identifierP = fmap Identifier
-    (charP '{' *> spanP (/='}') <* charP '}')
+identifierP = fmap Identifier identStrP
+
+identStrP :: Parser String
+identStrP = (charP '{' *> spanP (/='}') <* charP '}')
 
 commentP :: Parser [String]
 commentP = many ( whiteP
