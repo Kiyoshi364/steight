@@ -109,5 +109,5 @@ compose st@(Tfunc i1 o1) f@(Tfunc i2 o2) =
             "`, function `" ++ show f ++ "`"
 compose f1 (Tconst c) = compose f1 (Tfunc [] [Tconst c])
 compose (Tconst c) f2 = compose (Tfunc [] [Tconst c]) f2
-compose f1 f2 = error "Types.compose: Not handled inputs: compose (" ++
+compose f1 f2 = error $ "Types.compose: Not handled inputs: compose (" ++
     show f1 ++ ") (" ++ show f2 ++ ")"
