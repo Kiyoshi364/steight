@@ -13,7 +13,7 @@ type Dict k v = [(k, v)]
 insert :: k -> v -> Dict k v -> Dict k v
 insert k v d = (k, v):d
 
-findPair :: (k -> Bool) ->  Dict k v ->Maybe (k, v)
+findPair :: (k -> Bool) ->  Dict k v -> Maybe (k, v)
 findPair p = L.find (p . fst)
 
 find :: (k -> Bool) -> Dict k v -> Maybe v
