@@ -14,17 +14,32 @@ type IRDict = Dict String Block
 
 typecheckIO :: AST -> IO (Scope, Bool)
 typecheckIO ast = do
-    (errs, prog, leftover) <- return (typecheck ast)
-    _ <- if length errs == length leftover then return ()
-        else error $ "Typecheck.typecheckIO: lenght errs (" ++
-            show (length errs) ++ ") /= length lefover (" ++
-            show (length leftover) ++ ")"
-    _ <- if length errs > 0
-        then putStrLn "\n=== Errors: ==="
-            >> mapM putStrLn errs
-            >> putStrLn ""
-        else return ()
-    return (Scope prog, leftover == [])
+    (err_, prog, []) <- return (typecheck ast)
+    (mainTypOk, errs) <- return $ case find "main" prog of
+        Nothing              -> (False, "main block not found" : err_)
+        Just (Block typ _ _) -> if typ == Tfunc [] [] then (True, err_)
+            else (,) False $
+            ("In main: main shoud have type `" ++
+            show (Tfunc [] []) ++ "` but has type `" ++
+            show typ ++ "`") : err_
+    if length errs > 0
+    then putStrLn "=== Errors: ==="
+        >> mapM putStrLn (map (++"\n") errs)
+        >> putStrLn "===============\n"
+        >> if isOk "main" prog
+            then return (Scope prog, mainTypOk)
+            else return (Scope prog, False    )
+    else return (Scope prog, mainTypOk)
+
+isOk :: String -> IRDict -> Bool
+isOk str prog = case find str prog of
+    Nothing               -> False
+    Just (Block _ is scp) -> rec is scp prog
+  where
+    rec  []     _  _ = True
+    rec (i:is) scp p = case i of
+        IR.BlkCall s -> rec is scp p && (isOk s p || isOk s scp)
+        _            -> rec is scp p
 
 typecheck :: AST -> ([String], IRDict, IDict)
 typecheck ast = fst $ loop iter ([], [], Inst.dict ast)
@@ -74,8 +89,8 @@ fromInst p a i = let
         Print     -> help $ IR.Print
         Halt      -> help $ IR.Halt
         Builtin b -> help $ IR.Builtin b
-        Doblk xs -> typeblock p a "" xs
-            >>= return . \ (("",ir_is):p', a')
+        Doblk xs -> typeblock p a "do-block" xs
+            >>= return . \ (("do-block",ir_is):p', a')
                 -> (typT ir_is, p', a', Right $ IR.Blk ir_is)
 
         Typblk typ xs ->
