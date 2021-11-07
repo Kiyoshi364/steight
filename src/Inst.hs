@@ -15,7 +15,7 @@ import qualified Utils
 import Dict (Dict)
 
 data AST = AST
-    { dict :: Dict String [Inst]
+    { dict :: Dict String (Maybe TypeSig, [Inst])
     }
 
 instance Show AST where show (AST ds) = "AST " ++ show ds
@@ -43,6 +43,7 @@ data Inst
     | Doblk [Inst]
     | Nameblk String [Inst]
     | Typblk TypeSig [Inst]
+    | NameTypblk String TypeSig [Inst]
     | Identifier String
     deriving Eq
 
@@ -58,12 +59,17 @@ instance Show Inst where
     show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
         ipp is ++ "end"
     show (Nameblk name is) = "block " ++ name ++ " " ++ ipp is ++ "end"
+    show (NameTypblk name typ is) = "block " ++ name ++ " <" ++
+        show typ ++ "> " ++ ipp is ++ "end"
     show (Identifier ref) = "{" ++ ref ++ "}"
 
 lexer :: Parser AST
 lexer = fmap AST $ some (
-    fmap (\i -> case i of Nameblk s is -> (s, is); _ -> error "Inst.lexer")
-    (whiteP *> commentP *> nameblkP)
+    fmap (\i -> case i of
+        Nameblk    s     is -> (s, (Nothing , is))
+        NameTypblk s typ is -> (s, (Just typ, is))
+        _ -> error "Inst.lexer: non-exhaustive pattern")
+    (whiteP *> commentP *> (nametypblkP <|> nameblkP))
     ) <* whiteP <* commentP <* eofP
 
 instP :: Parser Inst
@@ -73,7 +79,7 @@ instP = commentP *> whiteP *>
     <|> printP <|> haltP
     <|> builtinP
     <|> typblkP <|> doblkP
-    <|> nameblkP
+    <|> nametypblkP <|> nameblkP
     <|> identifierP
     <|> errP)
 
@@ -116,6 +122,12 @@ nameblkP = fmap Nameblk
 typblkP :: Parser Inst
 typblkP = fmap Typblk
     (strP "do" *> whiteP *> typeP)
+    <*> (instseqP <* strP "end")
+
+nametypblkP :: Parser Inst
+nametypblkP = fmap NameTypblk
+    (strP "block" *> whiteP *> identStrP <* whiteP)
+    <*> (typeP <* whiteP)
     <*> (instseqP <* strP "end")
 
 instseqP :: Parser [Inst]
@@ -162,4 +174,5 @@ instTyp i = case i of
     Doblk   _ -> undefined
     Nameblk _ _ -> undefined
     Typblk  _ _ -> undefined
+    NameTypblk _ _ _ -> undefined
     Identifier _ -> undefined

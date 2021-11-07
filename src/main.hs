@@ -27,7 +27,7 @@ main = do
     -- putStrLn $ (++) "parsed: " $ either ("error: "++) (pp) $ P.value parsed
     -- putStrLn $ (++) "leftover: " $ show $ P.input parsed
     prog <- case P.value parsed of
-        Left  l -> putStrLn l >> return (AST [("main", [])])
+        Left  l -> putStrLn l >> return (AST [("main", (Nothing, []))])
         Right r ->               return  r
     putStrLn $ show prog
     putStrLn ""
@@ -44,7 +44,7 @@ iprog = [
     ]
 
 bprog :: Dict String Block
-bprog = (\ (_, b, _) -> b) $ typecheck $ AST [("main", iprog)]
+bprog = (\ (_, b, _) -> b) $ typecheck $ AST [("main", (Nothing, iprog))]
 
 tprog :: Scope
 tprog = Scope bprog
