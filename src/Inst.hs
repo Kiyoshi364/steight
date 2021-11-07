@@ -110,7 +110,7 @@ doblkP = fmap Doblk
 
 nameblkP :: Parser Inst
 nameblkP = fmap Nameblk
-    (strP "block" *> whiteP *> (identStrP <|> wordP) <* whiteP)
+    (strP "block" *> whiteP *> identStrP <* whiteP)
     <*> (instseqP <* strP "end")
 
 typblkP :: Parser Inst
@@ -125,7 +125,9 @@ identifierP :: Parser Inst
 identifierP = fmap Identifier identStrP
 
 identStrP :: Parser String
-identStrP = (charP '{' *> spanP (/='}') <* charP '}')
+identStrP = charP '{' *> spanP (/='}') <* charP '}'
+    <|> wordP
+        >>= (\ a -> if (a/="end") then pure a else failP "keyword")
 
 commentP :: Parser [String]
 commentP = many ( whiteP

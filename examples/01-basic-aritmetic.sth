@@ -2,11 +2,11 @@ block main
     // Push 1, push 2, add them
     1 2 +
     // This is a block call
-    {inspect}
+    inspect
     // Push 4 (stack: 3 4)
     4
     // Swap (stack: 4 3), sub, inspect
-    ~- {inspect}
+    ~- inspect
     drop
 end
 
