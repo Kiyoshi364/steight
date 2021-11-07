@@ -1,11 +1,17 @@
 block main
     // Push 1, push 2, add them
     1 2 +
-    // Duplicate the result, and print
-    // (print consumes one value)
-    : print
+    // This is a block call
+    {inspect}
     // Push 4 (stack: 3 4)
     4
-    // Swap (stack: 4 3), sub, print
-    ~- print
+    // Swap (stack: 4 3), sub, inspect
+    ~- {inspect}
+    drop
 end
+
+// Duplicate the result, and print
+// (print consumes the value)
+block inspect : print end
+// Alternative inspect declaration
+// block {inspect} : print end
