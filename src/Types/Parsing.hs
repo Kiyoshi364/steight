@@ -12,11 +12,15 @@ tconstP = strP "I64" *> whiteP *> pure (Tconst I64)
 
 tfuncP :: Parser TypeSig
 tfuncP = fmap Tfunc
-    (charP '[' *> whiteP *> typesP <* strP "--")
-    <*> (whiteP *> typesP <* charP ']' <* whiteP)
+        (charP '[' *> whiteP *> typesP <* strP "--")
+        <*> (whiteP *> typesP <* charP ']' <* whiteP)
+    <|>
+        fmap Tfunc
+        (pure []) <*> (charP '[' *>
+        whiteP *> typesP <* charP ']' <* whiteP)
   where
     typesP :: Parser [TypeSig]
-    typesP = many $ typeP <* whiteP
+    typesP = fmap reverse $ many $ typeP <* whiteP
 
 tvarP :: Parser TypeSig
 tvarP = fmap Tvar (strP "'" *> numP <* whiteP)
