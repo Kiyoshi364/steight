@@ -25,7 +25,7 @@ data Block = Block
 instance Show Block where
     show (Block  _  [] scp) = "scope " ++ show scp
     show (Block typ is [] ) =
-        " do " ++ show typ ++ " " ++ ipp is ++ "end"
+        "do " ++ show typ ++ " " ++ ipp is ++ "end"
     show (Block typ is scp) = "scope " ++ show scp ++
         " do " ++ show typ ++ " " ++ ipp is ++ "end"
 
