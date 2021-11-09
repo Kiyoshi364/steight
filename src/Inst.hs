@@ -112,26 +112,27 @@ subP = charP '-' *> pure Sub
 
 doblkP :: Parser Inst
 doblkP = fmap Doblk
-    (strP "do" *> whiteP *> instseqP <* strP "end")
+    (strP "do" *> whiteP *> instseqEndP)
 
 nameblkP :: Parser Inst
 nameblkP = fmap Nameblk
     (strP "block" *> whiteP *> identStrP <* whiteP)
-    <*> (instseqP <* strP "end")
+    <*> instseqEndP
 
 typblkP :: Parser Inst
 typblkP = fmap Typblk
     (strP "do" *> whiteP *> typeP)
-    <*> (instseqP <* strP "end")
+    <*> instseqEndP
 
 nametypblkP :: Parser Inst
 nametypblkP = fmap NameTypblk
     (strP "block" *> whiteP *> identStrP <* whiteP)
     <*> (typeP <* whiteP)
-    <*> (instseqP <* strP "end")
+    <*> instseqEndP
 
-instseqP :: Parser [Inst]
-instseqP = some $ instP <* whiteP
+instseqEndP :: Parser [Inst]
+instseqEndP = strP "end" *> pure [] <|>
+    fmap (:) (instP <* whiteP) <*> instseqEndP
 
 identifierP :: Parser Inst
 identifierP = fmap Identifier identStrP
@@ -139,7 +140,6 @@ identifierP = fmap Identifier identStrP
 identStrP :: Parser String
 identStrP = charP '{' *> spanP (/='}') <* charP '}'
     <|> wordP
-        >>= (\ a -> if (a/="end") then pure a else failP "keyword")
 
 commentP :: Parser [String]
 commentP = many ( whiteP
