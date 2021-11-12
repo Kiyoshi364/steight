@@ -31,6 +31,7 @@ data Builtin
     | Drop
     | Print
     | Halt
+    | Apply
     deriving Eq
 
 instance Show Builtin where
@@ -40,6 +41,7 @@ instance Show Builtin where
     show (Dup   ) = ":"
     show (Drop  ) = "."
     show (Print ) = "print"
+    show (Apply ) = "$"
     show (Halt  ) = "halt"
 
 data Inst
@@ -56,7 +58,7 @@ data Inst
 instance Show Inst where
     show (Push    x) = show x
     show (Builtin b) = show b
-    show (PQuote is) = "#[" ++ ipp is ++ "]"
+    show (PQuote is) = "#[ " ++ ipp is ++ "]"
     show (Doblk  is) = "do " ++ ipp is ++ "end"
     show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
         ipp is ++ "end"
@@ -92,6 +94,7 @@ builtinP = fmap Builtin $
         addP   <|> subP
     <|> swapP  <|> dupP  <|> dropP
     <|> printP <|> haltP
+    <|> applyP
 
 addP :: Parser Builtin
 addP = charP '+' *> pure Add
@@ -113,6 +116,9 @@ printP = strP "print" *> pure Print
 
 haltP :: Parser Builtin
 haltP = strP "<>" *> pure Halt
+
+applyP :: Parser Builtin
+applyP = (strP "apply" <|> strP "$") *> pure Apply
 
 quotedP :: Parser Inst
 quotedP = fmap PQuote
@@ -173,6 +179,7 @@ builtinTyp b = case b of
     Dup     -> Tfunc [ Tvar 0         ] [ Tvar 0, Tvar 0 ]
     Drop    -> Tfunc [ Tvar 0         ] [                ]
     Print   -> Tfunc [ Tvar 0         ] [                ]
+    Apply   -> Tfunc [ Tfunc [Tvar 0] [Tvar 1], Tvar 0 ] [ Tvar 1         ]
     Halt    -> Tfunc [                ] [                ]
 
 instTyp :: Inst -> TypeSig

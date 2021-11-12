@@ -97,7 +97,8 @@ fromInst p a i = let
         Builtin b -> help $ IR.Builtin b
         PQuote xs -> fromInst p a (Doblk xs)
             >>= return . \ (typ, p', a', Right (IR.Blk ir_is))
-                -> (typ, p', a', Right (IR.Push $ ST.Quote typ $ insts ir_is))
+                -> (Tfunc [] [typ], p', a',
+                    Right (IR.Push $ ST.Quote typ $ insts ir_is))
         Doblk  xs -> typeblock p a "do-block" Nothing xs
             >>= return . \ (("do-block",ir_is):p', a')
                 -> (typT ir_is, p', a', Right $ IR.Blk ir_is)
