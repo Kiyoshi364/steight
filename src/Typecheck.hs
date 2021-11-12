@@ -93,11 +93,6 @@ fromInst p a i = let
         (,,,) (instTyp i) p a . Right in
     case i of
         Push x    -> help $ IR.Push x
-        Swap      -> help $ IR.Swap
-        Dup       -> help $ IR.Dup
-        Drop      -> help $ IR.Drop
-        Print     -> help $ IR.Print
-        Halt      -> help $ IR.Halt
         Builtin b -> help $ IR.Builtin b
         Doblk xs -> typeblock p a "do-block" Nothing xs
             >>= return . \ (("do-block",ir_is):p', a')

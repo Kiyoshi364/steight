@@ -26,19 +26,24 @@ ipp = foldr (\ i s -> show i ++ " " ++ s) ""
 data Builtin
     = Add
     | Sub
-    deriving Eq
-
-instance Show Builtin where
-    show (Add   ) = "+"
-    show (Sub   ) = "-"
-
-data Inst
-    = Push Int
     | Swap
     | Dup
     | Drop
     | Print
     | Halt
+    deriving Eq
+
+instance Show Builtin where
+    show (Add   ) = "+"
+    show (Sub   ) = "-"
+    show (Swap  ) = "~"
+    show (Dup   ) = ":"
+    show (Drop  ) = "."
+    show (Print ) = "print"
+    show (Halt  ) = "halt"
+
+data Inst
+    = Push Int
     | Builtin Builtin
     | Doblk [Inst]
     | Nameblk String [Inst]
@@ -49,11 +54,6 @@ data Inst
 
 instance Show Inst where
     show (Push    x) = show x
-    show (Swap     ) = "~"
-    show (Dup      ) = ":"
-    show (Drop     ) = "."
-    show (Print    ) = "print"
-    show (Halt     ) = "halt"
     show (Builtin b) = show b
     show (Doblk  is) = "do " ++ ipp is ++ "end"
     show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
@@ -75,8 +75,6 @@ lexer = fmap AST $ some (
 instP :: Parser Inst
 instP = commentP *> whiteP *>
     (   pushP
-    <|> swapP <|> dupP <|> dropP
-    <|> printP <|> haltP
     <|> builtinP
     <|> typblkP <|> doblkP
     <|> nametypblkP <|> nameblkP
@@ -86,29 +84,33 @@ instP = commentP *> whiteP *>
 pushP :: Parser Inst
 pushP = fmap Push numP
 
-swapP :: Parser Inst
-swapP = (strP "swap" <|> strP "~") *> pure Swap
-
-dupP  :: Parser Inst
-dupP  = (strP "dup" <|> strP ":") *> pure Dup
-
-dropP :: Parser Inst
-dropP = (strP "drop" <|> strP ".") *> pure Drop
-
-printP :: Parser Inst
-printP = strP "print" *> pure Print
-
-haltP :: Parser Inst
-haltP = strP "<>" *> pure Halt
-
 builtinP :: Parser Inst
-builtinP = fmap Builtin $ addP <|> subP
+builtinP = fmap Builtin $
+        addP   <|> subP
+    <|> swapP  <|> dupP  <|> dropP
+    <|> printP <|> haltP
 
 addP :: Parser Builtin
 addP = charP '+' *> pure Add
 
 subP :: Parser Builtin
 subP = charP '-' *> pure Sub
+
+swapP :: Parser Builtin
+swapP = (strP "swap" <|> strP "~") *> pure Swap
+
+dupP  :: Parser Builtin
+dupP  = (strP "dup" <|> strP ":") *> pure Dup
+
+dropP :: Parser Builtin
+dropP = (strP "drop" <|> strP ".") *> pure Drop
+
+printP :: Parser Builtin
+printP = strP "print" *> pure Print
+
+haltP :: Parser Builtin
+haltP = strP "<>" *> pure Halt
+
 
 doblkP :: Parser Inst
 doblkP = fmap Doblk
@@ -159,17 +161,17 @@ i64 = Tconst I64
 
 builtinTyp :: Builtin -> TypeSig
 builtinTyp b = case b of
-    Add -> Tfunc [ i64, i64 ] [ i64 ]
-    Sub -> Tfunc [ i64, i64 ] [ i64 ]
+    Add     -> Tfunc [ i64   , i64    ] [ i64            ]
+    Sub     -> Tfunc [ i64   , i64    ] [ i64            ]
+    Swap    -> Tfunc [ Tvar 0, Tvar 1 ] [ Tvar 1, Tvar 0 ]
+    Dup     -> Tfunc [ Tvar 0         ] [ Tvar 0, Tvar 0 ]
+    Drop    -> Tfunc [ Tvar 0         ] [                ]
+    Print   -> Tfunc [ Tvar 0         ] [                ]
+    Halt    -> Tfunc [                ] [                ]
 
 instTyp :: Inst -> TypeSig
 instTyp i = case i of
-    Push    _ -> Tconst                     I64
-    Swap      -> Tfunc [ Tvar 0, Tvar 1 ] [ Tvar 1, Tvar 0 ]
-    Dup       -> Tfunc [ Tvar 0         ] [ Tvar 0, Tvar 0 ]
-    Drop      -> Tfunc [ Tvar 0         ] [                ]
-    Print     -> Tfunc [ Tvar 0         ] [                ]
-    Halt      -> Tfunc [                ] [                ]
+    Push    _ -> Tconst I64
     Builtin b -> builtinTyp b
     Doblk   _ -> undefined
     Nameblk _ _ -> undefined

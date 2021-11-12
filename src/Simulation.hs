@@ -31,7 +31,7 @@ simulate :: Scope -> (State Int, Either String ())
 simulate = loop step . begin
 
 step :: State Int -> Either (Either String ()) (State Int)
-step s@(State _  _  _  []   ) = step s{ code = [Halt] }
+step s@(State _  _  _  []   ) = step s{ code = [Builtin Halt] }
 step s@(State st ot p (i:is)) =
     let state = s{ code = is }
         swap (b:a:xs) = state{ stack =   a:b:xs }
@@ -49,14 +49,14 @@ step s@(State st ot p (i:is)) =
         sub        _  = undefined
     in case i of
         Push    x -> Right $ state{ stack = x:st }
-        Swap      -> Right $ swap  st
-        Dup       -> Right $ dup   st
-        Drop      -> Right $ drpp  st
-        Print     -> Right $ prnt  st
-        Halt      -> Left  $ Right ()
         Builtin b -> case b of
-            Add -> Right $ add st
-            Sub -> Right $ sub st
+            Add     -> Right $ add st
+            Sub     -> Right $ sub st
+            Swap    -> Right $ swap  st
+            Dup     -> Right $ dup   st
+            Drop    -> Right $ drpp  st
+            Print   -> Right $ prnt  st
+            Halt    -> Left  $ Right ()
         Blk     b -> let
             iis = insts b
             s2 = fst $ loop step s{ code = iis }

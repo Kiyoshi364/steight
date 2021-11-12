@@ -40,7 +40,8 @@ main = do
 iprog :: [Inst]
 iprog = [
     Doblk [Push 2, Push 1, Builtin Add],
-    Dup, Print, Push 3, Swap, Builtin Sub, Print
+    Builtin Dup, Builtin Print, Push 3,
+    Builtin Swap, Builtin Sub, Builtin Print
     ]
 
 bprog :: Dict String Block

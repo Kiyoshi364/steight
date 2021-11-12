@@ -34,11 +34,6 @@ emptyBlock = Block (Tfunc [] []) [] []
 
 data IRInst
     = Push Int
-    | Swap
-    | Dup
-    | Drop
-    | Print
-    | Halt
     | Builtin Builtin
     | Blk Block
     | BlkCall String
@@ -46,11 +41,6 @@ data IRInst
 
 instance Show IRInst where
     show (Push    x) = show x
-    show (Swap     ) = "~"
-    show (Dup      ) = ":"
-    show (Drop     ) = "."
-    show (Print    ) = "print"
-    show (Halt     ) = "halt"
     show (Builtin b) = show b
     show (Blk     b) = show b
     show (BlkCall r) = "{" ++ r ++ "}"
