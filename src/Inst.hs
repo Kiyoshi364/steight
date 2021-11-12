@@ -45,6 +45,7 @@ instance Show Builtin where
 data Inst
     = Push Int
     | Builtin Builtin
+    | PQuote [Inst]
     | Doblk [Inst]
     | Nameblk String [Inst]
     | Typblk TypeSig [Inst]
@@ -55,6 +56,7 @@ data Inst
 instance Show Inst where
     show (Push    x) = show x
     show (Builtin b) = show b
+    show (PQuote is) = "#[" ++ ipp is ++ "]"
     show (Doblk  is) = "do " ++ ipp is ++ "end"
     show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
         ipp is ++ "end"
@@ -76,6 +78,7 @@ instP :: Parser Inst
 instP = commentP *> whiteP *>
     (   pushP
     <|> builtinP
+    <|> quotedP
     <|> typblkP <|> doblkP
     <|> nametypblkP <|> nameblkP
     <|> identifierP
@@ -111,30 +114,33 @@ printP = strP "print" *> pure Print
 haltP :: Parser Builtin
 haltP = strP "<>" *> pure Halt
 
+quotedP :: Parser Inst
+quotedP = fmap PQuote
+    (strP "#[" *> instseqP "]")
 
 doblkP :: Parser Inst
 doblkP = fmap Doblk
-    (strP "do" *> whiteP *> instseqEndP)
+    (strP "do" *> whiteP *> instseqP "end")
 
 nameblkP :: Parser Inst
 nameblkP = fmap Nameblk
     (strP "block" *> whiteP *> identStrP <* whiteP)
-    <*> instseqEndP
+    <*> instseqP "end"
 
 typblkP :: Parser Inst
 typblkP = fmap Typblk
     (strP "do" *> whiteP *> typeP)
-    <*> instseqEndP
+    <*> instseqP "end"
 
 nametypblkP :: Parser Inst
 nametypblkP = fmap NameTypblk
     (strP "block" *> whiteP *> identStrP <* whiteP)
     <*> (typeP <* whiteP)
-    <*> instseqEndP
+    <*> instseqP "end"
 
-instseqEndP :: Parser [Inst]
-instseqEndP = strP "end" *> pure [] <|>
-    fmap (:) (instP <* whiteP) <*> instseqEndP
+instseqP :: String -> Parser [Inst]
+instseqP end = strP end *> pure [] <|>
+    fmap (:) (instP <* whiteP) <*> instseqP end
 
 identifierP :: Parser Inst
 identifierP = fmap Identifier identStrP
@@ -171,8 +177,9 @@ builtinTyp b = case b of
 
 instTyp :: Inst -> TypeSig
 instTyp i = case i of
-    Push    _ -> Tconst I64
+    Push    _ -> i64
     Builtin b -> builtinTyp b
+    PQuote  _ -> undefined
     Doblk   _ -> undefined
     Nameblk _ _ -> undefined
     Typblk  _ _ -> undefined

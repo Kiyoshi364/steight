@@ -1,6 +1,7 @@
 module IR
     ( Scope(..)
     , Block(..)
+    , StkTyp(..)
     , IRInst(..)
     , emptyBlock
     ) where
@@ -32,15 +33,24 @@ instance Show Block where
 emptyBlock :: Block
 emptyBlock = Block (Tfunc [] []) [] []
 
+data StkTyp
+    = I64 Int
+    | Quote TypeSig [IRInst]
+    deriving Eq
+
+instance Show StkTyp where
+    show (I64      x) = show x
+    show (Quote t is) = "#[ " ++ ipp is ++ "]::" ++ show t
+
 data IRInst
-    = Push Int
+    = Push StkTyp
     | Builtin Builtin
     | Blk Block
     | BlkCall String
     deriving Eq
 
 instance Show IRInst where
-    show (Push    x) = show x
+    show (Push    p) = show p
     show (Builtin b) = show b
     show (Blk     b) = show b
     show (BlkCall r) = "{" ++ r ++ "}"

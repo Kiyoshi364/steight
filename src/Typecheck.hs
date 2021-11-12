@@ -5,6 +5,7 @@ module Typecheck
 import Types (TypeSig(..), compose)
 import Inst (AST(..), Inst(..), instTyp)
 import IR (Scope(..), Block(..), emptyBlock, IRInst)
+import qualified IR as ST (StkTyp(..))
 import qualified IR
 import Utils (assert, assertWith, loop)
 import Dict (Dict, insert, find, partPair)
@@ -92,9 +93,12 @@ fromInst p a i = let
     help = return .
         (,,,) (instTyp i) p a . Right in
     case i of
-        Push x    -> help $ IR.Push x
+        Push x    -> help $ IR.Push $ ST.I64 x
         Builtin b -> help $ IR.Builtin b
-        Doblk xs -> typeblock p a "do-block" Nothing xs
+        PQuote xs -> fromInst p a (Doblk xs)
+            >>= return . \ (typ, p', a', Right (IR.Blk ir_is))
+                -> (typ, p', a', Right (IR.Push $ ST.Quote typ $ insts ir_is))
+        Doblk  xs -> typeblock p a "do-block" Nothing xs
             >>= return . \ (("do-block",ir_is):p', a')
                 -> (typT ir_is, p', a', Right $ IR.Blk ir_is)
 
