@@ -171,6 +171,9 @@ errP = Parser $
 i64 :: TypeSig
 i64 = Tconst I64
 
+tmany :: Int -> TypeSig
+tmany i = Tmany (i, 0)
+
 builtinTyp :: Builtin -> TypeSig
 builtinTyp b = case b of
     Add     -> Tfunc [ i64   , i64    ] [ i64            ]
@@ -179,7 +182,7 @@ builtinTyp b = case b of
     Dup     -> Tfunc [ Tvar 0         ] [ Tvar 0, Tvar 0 ]
     Drop    -> Tfunc [ Tvar 0         ] [                ]
     Print   -> Tfunc [ Tvar 0         ] [                ]
-    Apply   -> Tfunc [ Tfunc [Tvar 0] [Tvar 1], Tvar 0 ] [ Tvar 1         ]
+    Apply   -> Tfunc [ Tfunc [tmany 0] [tmany 1], tmany 0 ] [ tmany 1      ]
     Halt    -> Tfunc [                ] [                ]
 
 instTyp :: Inst -> TypeSig

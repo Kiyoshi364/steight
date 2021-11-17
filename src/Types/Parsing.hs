@@ -5,7 +5,7 @@ import Control.Applicative ((<|>), many)
 import Types (TypeSig(..), ConstT(..))
 
 typeP :: Parser TypeSig
-typeP = tconstP <|> tfuncP <|> tvarP
+typeP = tconstP <|> tfuncP <|> tvarP <|> tmanyP
 
 tconstP :: Parser TypeSig
 tconstP = strP "I64" *> whiteP *> pure (Tconst I64)
@@ -24,3 +24,6 @@ tfuncP = fmap Tfunc
 
 tvarP :: Parser TypeSig
 tvarP = fmap Tvar (strP "'" *> numP <* whiteP)
+
+tmanyP :: Parser TypeSig
+tmanyP = fmap (Tmany . flip (,) 0) (strP "!" *> numP <* whiteP)

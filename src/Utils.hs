@@ -1,7 +1,7 @@
 module Utils
     ( fork, hook
     , assert, assertWith
-    , onFst, onSnd, onPair, dup
+    , onFst, onSnd, onBoth, onPair, dup
     , loop
     ) where
 
@@ -30,6 +30,9 @@ onFst f (a, b) = (f a, b)
 
 onSnd :: (b -> c) -> (a, b) -> (a, c)
 onSnd f (a, b) = (a, f b)
+
+onBoth :: (a -> b) -> (a, a) -> (b, b)
+onBoth f (a, b) = (f a, f b)
 
 onPair :: (a -> a', b -> b') -> (a, b) -> (a', b')
 onPair (fa, fb) = onFst fa . onSnd fb

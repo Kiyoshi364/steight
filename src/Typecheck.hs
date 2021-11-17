@@ -6,7 +6,7 @@ import Types (TypeSig(..), compose)
 import Inst (AST(..), Inst(..), instTyp)
 import IR (Scope(..), Block(..), emptyBlock, IRInst)
 import qualified IR as ST (StkTyp(..))
-import qualified IR
+import qualified IR (IRInst(..))
 import Utils (assert, assertWith, loop)
 import Dict (Dict, insert, find, partPair)
 
