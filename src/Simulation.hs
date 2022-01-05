@@ -40,6 +40,8 @@ step s@(State st ot p (i:is)) =
         sub        _  = undefined
         swap (b:a:xs) = state{ stack =   a:b:xs }
         swap       _  = undefined
+        rot (c:b:a:xs) = state{ stack = a:c:b:xs }
+        rot        _  = undefined
         dup  (  a:xs) = state{ stack =   a:a:xs }
         dup        _  = undefined
         drpp (  _:xs) = state{ stack =       xs }
@@ -53,6 +55,7 @@ step s@(State st ot p (i:is)) =
             Add     -> Right $ add st
             Sub     -> Right $ sub st
             Swap    -> Right $ swap  st
+            Rot     -> Right $ rot   st
             Dup     -> Right $ dup   st
             Drop    -> Right $ drpp  st
             Print   -> Right $ prnt  st

@@ -27,6 +27,7 @@ data Builtin
     = Add
     | Sub
     | Swap
+    | Rot
     | Dup
     | Drop
     | Print
@@ -38,6 +39,7 @@ instance Show Builtin where
     show (Add   ) = "+"
     show (Sub   ) = "-"
     show (Swap  ) = "~"
+    show (Rot   ) = "rot"
     show (Dup   ) = ":"
     show (Drop  ) = "."
     show (Print ) = "print"
@@ -92,7 +94,7 @@ pushP = fmap Push numP
 builtinP :: Parser Inst
 builtinP = fmap Builtin $
         addP   <|> subP
-    <|> swapP  <|> dupP  <|> dropP
+    <|> swapP  <|> rotP <|> dupP  <|> dropP
     <|> printP <|> haltP
     <|> applyP
 
@@ -104,6 +106,9 @@ subP = charP '-' *> pure Sub
 
 swapP :: Parser Builtin
 swapP = (strP "swap" <|> strP "~") *> pure Swap
+
+rotP :: Parser Builtin
+rotP = strP "rot" *> pure Rot
 
 dupP  :: Parser Builtin
 dupP  = (strP "dup" <|> strP ":") *> pure Dup
@@ -176,14 +181,15 @@ tmany i = Tmany (i, 0)
 
 builtinTyp :: Builtin -> TypeSig
 builtinTyp b = case b of
-    Add     -> Tfunc [ i64   , i64    ] [ i64            ]
-    Sub     -> Tfunc [ i64   , i64    ] [ i64            ]
-    Swap    -> Tfunc [ Tvar 0, Tvar 1 ] [ Tvar 1, Tvar 0 ]
-    Dup     -> Tfunc [ Tvar 0         ] [ Tvar 0, Tvar 0 ]
-    Drop    -> Tfunc [ Tvar 0         ] [                ]
-    Print   -> Tfunc [ Tvar 0         ] [                ]
-    Apply   -> Tfunc [ Tfunc [tmany 0] [tmany 1], tmany 0 ] [ tmany 1      ]
-    Halt    -> Tfunc [                ] [                ]
+    Add     -> Tfunc [ i64   , i64            ] [ i64                    ]
+    Sub     -> Tfunc [ i64   , i64            ] [ i64                    ]
+    Swap    -> Tfunc [ Tvar 0, Tvar 1         ] [ Tvar 1, Tvar 0         ]
+    Rot     -> Tfunc [ Tvar 0, Tvar 1, Tvar 2 ] [ Tvar 2, Tvar 0, Tvar 1 ]
+    Dup     -> Tfunc [ Tvar 0                 ] [ Tvar 0, Tvar 0         ]
+    Drop    -> Tfunc [ Tvar 0                 ] [                        ]
+    Print   -> Tfunc [ Tvar 0                 ] [                        ]
+    Apply   -> Tfunc [ Tfunc [tmany 0] [tmany 1], tmany 0 ] [ tmany 1    ]
+    Halt    -> Tfunc [                        ] [                        ]
 
 instTyp :: Inst -> TypeSig
 instTyp i = case i of
