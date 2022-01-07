@@ -1,17 +1,16 @@
 module Types
-    ( TypeSig(..)
-    , ConstT(..)
+    ( ConstT(..)
+    , TypeSig(..)
     , Matched(..)
     , match
     , compose
     ) where
 
+import Types.TypeDef (IVar, IMany, ConstT(..), TypeSig(..))
+
 import Utils (fork, onFst, onSnd)
 import qualified Dict as D (Dict)
 import Dict (find)
-
-type IVar   = Int
-type IMany  = (,) Int Int
 
 type DictVar  = D.Dict (Either IVar IVar) TypeSig
 type DictMany = D.Dict (Either IMany IMany) ProdMany
@@ -33,26 +32,6 @@ incM = onSnd (+1)
 
 tmInc :: IMany -> TypeSig
 tmInc = Tmany . incM
-
-data TypeSig
-    = Tconst ConstT
-    | Tfunc [TypeSig] [TypeSig]
-    | Tvar IVar
-    | Tmany IMany
-    deriving (Eq)
-
-instance Show TypeSig where
-    show (Tconst   t ) = show t
-    show (Tfunc [] []) = "()"
-    show (Tfunc [] o ) = "( " ++ revcat o ++ ")"
-    show (Tfunc i  o ) = "( " ++ revcat i ++ "-- " ++ revcat o ++ ")"
-    show (Tvar     n ) = "'" ++ show n
-    show (Tmany (n,0)) = "!" ++ show n
-    show (Tmany    n ) = "!" ++ show (fst n) ++ "'" ++ show (snd n)
-
-data ConstT
-    = I64
-    deriving (Show, Eq)
 
 data Matched
     = Mok    TypeSig
@@ -79,9 +58,6 @@ pm2Typs (PMtwo t ts) = [t, ts]
 
 pm2 :: TypeSig -> IMany -> ProdMany
 pm2 a n = PMtwo a $ tmInc n
-
-revcat :: Show a => [a] -> String
-revcat = foldr (\t s -> s ++ show t ++ " ") ""
 
 rebind :: TypeSig -> TypeSig
 rebind typ = (\ (_, _, m) -> case m of
