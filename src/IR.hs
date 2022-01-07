@@ -40,7 +40,7 @@ data StkTyp
 
 instance Show StkTyp where
     show (I64      x) = show x
-    show (Quote t is) = "#[ " ++ ipp is ++ "]::" ++ show t
+    show (Quote t is) = "[ " ++ ipp is ++ "]::" ++ show t
 
 data IRInst
     = Push StkTyp

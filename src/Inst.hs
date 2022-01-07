@@ -60,7 +60,7 @@ data Inst
 instance Show Inst where
     show (Push    x) = show x
     show (Builtin b) = show b
-    show (PQuote is) = "#[ " ++ ipp is ++ "]"
+    show (PQuote is) = "[ " ++ ipp is ++ "]"
     show (Doblk  is) = "do " ++ ipp is ++ "end"
     show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
         ipp is ++ "end"
@@ -127,7 +127,7 @@ applyP = (strP "apply" <|> strP "$") *> pure Apply
 
 quotedP :: Parser Inst
 quotedP = fmap PQuote
-    (strP "#[" *> instseqP "]")
+    (strP "[" *> instseqP "]")
 
 doblkP :: Parser Inst
 doblkP = fmap Doblk

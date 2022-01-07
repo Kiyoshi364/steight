@@ -43,9 +43,9 @@ data TypeSig
 
 instance Show TypeSig where
     show (Tconst   t ) = show t
-    show (Tfunc [] []) = "[]"
-    show (Tfunc [] o ) = "[ " ++ revcat o ++ "]"
-    show (Tfunc i  o ) = "[ " ++ revcat i ++ "-- " ++ revcat o ++ "]"
+    show (Tfunc [] []) = "()"
+    show (Tfunc [] o ) = "( " ++ revcat o ++ ")"
+    show (Tfunc i  o ) = "( " ++ revcat i ++ "-- " ++ revcat o ++ ")"
     show (Tvar     n ) = "'" ++ show n
     show (Tmany (n,0)) = "!" ++ show n
     show (Tmany    n ) = "!" ++ show (fst n) ++ "'" ++ show (snd n)
