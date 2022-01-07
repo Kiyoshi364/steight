@@ -1,11 +1,32 @@
 module Utils
-    ( fork, hook
+    ( (|>) , (\\) , (|$>) , (\\\) , (...)
+    , fork, hook
     , assert, assertWith
     , onFst, onSnd, onBoth, onPair, dup
     , loop
     ) where
 
 -- Combinators
+
+(|>) :: a -> (a -> b) -> b
+(|>) = flip ($)
+infixl 0 |>
+
+(\\) :: (a -> b) -> (b -> c) -> a -> c
+(\\) = flip (.)
+infixl 9 \\
+
+(|$>) :: Functor f => f a -> (a -> b) -> f b
+(|$>) = flip (<$>)
+infixl 4 |$>
+
+(\\\) :: (a1 -> a2 -> b) -> (b -> c) -> a1 -> a2 -> c
+(\\\) = flip (...)
+infixl 8 \\\
+
+(...) :: (b -> c) -> (a1 -> a2 -> b) -> a1 -> a2 -> c
+(...) = (.) (.) (.)
+infixr 8 ...
 
 fork :: (a1 -> a2 -> b) -> (a -> a1) -> (a -> a2) -> a -> b
 fork h f g x = h (f x) $ g x
