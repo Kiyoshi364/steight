@@ -1,5 +1,6 @@
-module Lexer
+module Parsing.Lexer
     ( Tkn(..)
+    , Loc(..)
     , Token(..)
     , tokenize
     , parseNum
@@ -54,6 +55,15 @@ data Loc = Loc
 
 instance Show Loc where
     show l = show (getLine l) ++ "." ++ show (getCol l)
+
+instance Eq Loc where
+    (Loc l1 c1) == (Loc l2 c2) = l1 == l2 && c1 == c2
+
+instance Ord Loc where
+    compare (Loc l1 c1) (Loc l2 c2) = case compare l1 l2 of
+        LT -> LT
+        GT -> GT
+        EQ -> compare c1 c2
 
 emptyLoc :: Loc
 emptyLoc = Loc 1 1
