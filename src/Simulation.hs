@@ -3,21 +3,21 @@ module Simulation
     ) where
 
 import Inst (Builtin(..))
-import IR (Scope(..), Block(..), StkTyp(..), IRInst(..))
+import IR.Bytecode (Bytecode(..), Chunk(..), StkTyp(..), ByteInst(..))
 import Utils (fork, loop)
 import Dict (find)
 
 data State a = State
     { stack  :: [a]
     , out    :: String
-    , prog   :: Scope
-    , code   :: [IRInst]
+    , prog   :: Bytecode
+    , code   :: [ByteInst]
     } deriving Show
 
-begin :: Scope -> State a
+begin :: Bytecode -> State a
 begin = fork (State [] []) id $ maybe [] insts . find "main" . dict
 
-simulateIO :: Scope -> IO (State StkTyp)
+simulateIO :: Bytecode -> IO (State StkTyp)
 simulateIO scp = do
     (s, rt_err) <- return $ simulate $ begin scp
     either (putStrLn . ("Runtime error: "++)) return rt_err
@@ -65,15 +65,15 @@ step s@(State st ot p (i:is)) =
                     s2 = fst $ simulate s{ stack = xs, code = iis }
                     in Right $ s2{ code = is }
                 _                -> undefined
-        Blk     b -> let
+        Chk     b -> let
             iis = insts b
             s2 = fst $ simulate s{ code = iis }
             in Right $ s2{ code = is }
-        BlkCall r -> case find r $ dict p of
+        ChkCall r -> case find r $ dict p of
             Nothing  -> Left $ Left $ "Could not find block `"
                 ++ r ++ "`"
-            Just blk -> let
-                iis = insts blk
+            Just chk -> let
+                iis = insts chk
                 (s2, err_hlt) = loop step s{ code = iis }
                 in case err_hlt of
                     Left err -> Left $ Left err

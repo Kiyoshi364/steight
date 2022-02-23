@@ -5,7 +5,7 @@ module Main
 
 import qualified Parser as P
 import Inst (Inst, Inst(..), Builtin(..), lexer, AST(..))
-import IR (Scope(Scope), Block(..), emptyBlock)
+import IR.Bytecode (Bytecode(Bytecode), Chunk(..), emptyChunk)
 import Typecheck (typecheckIO, typecheck)
 import Simulation (simulateIO)
 import Dict (Dict)
@@ -34,7 +34,7 @@ main = do
     (p', ok) <- typecheckIO prog
     putStrLn $ show p'
     _ <- if ok then putStrLn "=== simulation ===" >> simulateIO p'
-          else simulateIO $ Scope [("main", emptyBlock)]
+          else simulateIO $ Bytecode [("main", emptyChunk)]
     return ()
 
 iprog :: [Inst]
@@ -44,8 +44,8 @@ iprog = [
     Builtin Swap, Builtin Sub, Builtin Print
     ]
 
-bprog :: Dict String Block
+bprog :: Dict String Chunk
 bprog = (\ (_, b, _) -> b) $ typecheck $ AST [("main", (Nothing, iprog))]
 
-tprog :: Scope
-tprog = Scope bprog
+tprog :: Bytecode
+tprog = Bytecode bprog
