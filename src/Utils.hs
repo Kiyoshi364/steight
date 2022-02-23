@@ -4,6 +4,8 @@ module Utils
     , assert, assertWith
     , onFst, onSnd, onBoth, onPair, dup
     , loop
+    , Id(..), Default(..)
+    , NonEmpty(..), safeHead, safeTail, asList
     ) where
 
 -- Combinators
@@ -67,3 +69,60 @@ loop :: (a -> Either b a) -> a -> (a, b)
 loop f x = case f x of
         Right x' -> loop f x'
         Left  b  -> (x, b)
+
+-- Types
+
+newtype Id a = Id a
+
+instance Functor Id where
+    fmap f (Id a) = Id $ f a
+
+instance Applicative Id where
+    pure = Id
+    (Id f) <*> fa = f <$> fa
+
+instance Monad Id where
+    (Id a) >>= f = f a
+
+instance Foldable Id where
+    foldr f b (Id a) = f a b
+
+instance Traversable Id where
+    traverse f (Id a) = Id <$> f a
+
+class Default e where
+    def :: e
+
+instance Default e => Semigroup (Id e) where
+    _ <> b = b
+
+instance Default e => Monoid (Id e) where
+    mempty = Id def
+
+data NonEmpty a = NonEmpty a [a]
+
+safeHead :: NonEmpty a -> a
+safeHead (NonEmpty a _) = a
+
+safeTail :: NonEmpty a -> [a]
+safeTail (NonEmpty _ as) = as
+
+asList :: NonEmpty a -> [a]
+asList (NonEmpty a as) = a : as
+
+instance Semigroup (NonEmpty a) where
+    (NonEmpty a as) <> nbs = NonEmpty a $ as <> asList nbs
+
+instance Functor NonEmpty where
+    fmap f (NonEmpty a as) = NonEmpty (f a) $ fmap f as
+
+instance Applicative NonEmpty where
+    pure = flip NonEmpty []
+    (NonEmpty f fs) <*> (NonEmpty a as) =
+        NonEmpty (f a) $ fmap f as <> (fs <*> as)
+
+instance Foldable NonEmpty where
+    foldr f b (NonEmpty a as) = f a $ foldr f b as
+
+instance Traversable NonEmpty where
+    traverse f (NonEmpty a as) = NonEmpty <$> f a <*> traverse f as
