@@ -1,5 +1,6 @@
 module IR.Token
-    ( Tkn(..)
+    ( Name(..)
+    , Tkn(..)
     , Loc(..)
     , Token(..)
     , emptyLoc, adv
@@ -8,6 +9,27 @@ module IR.Token
 
 import Prelude hiding (getLine)
 
+data Name
+    = NUp      String
+    | NDown    String
+    | NIntro   String
+    | NElim    String
+    | NBuiltin String
+    | NSymbol  String
+    | NNumber  String
+    | NString  String
+    deriving Eq
+
+instance Show Name where
+    show (NUp      s) = "Up "       ++ s
+    show (NDown    s) = "Down "     ++ s
+    show (NIntro   s) = "Intro "    ++ s
+    show (NElim    s) = "Elim "     ++ s
+    show (NBuiltin s) = "Builtin "  ++ s
+    show (NSymbol  s) = "Symb "     ++ s
+    show (NNumber  s) = "Num "      ++ s
+    show (NString  s) = "Str "      ++ s
+
 data Tkn
     -- Parentesis
     = TkOpenPar   | TkClosePar
@@ -15,35 +37,26 @@ data Tkn
     | TkOpenCurly | TkCloseCurly
     -- Keywords
     | TkDo | TkBlock | TkType | TkEnd | TkDash
-    -- Identifiers
-    | TkUpIdentifier String
-    | TkDownIdentifier String
-    | TkSymbolIdentifier String
-    | TkNumber String
-    -- String Literal
-    | TkString String
+    -- Identifiers and Literals
+    | TkName Name
     -- Comment
     | TkComment String
     deriving (Eq)
 
 instance Show Tkn where
-    show TkOpenPar              = "("
-    show TkClosePar             = ")"
-    show TkOpenBrack            = "["
-    show TkCloseBrack           = "]"
-    show TkOpenCurly            = "{"
-    show TkCloseCurly           = "}"
-    show TkDo                   = "Key do"
-    show TkBlock                = "Key block"
-    show TkType                 = "Key type"
-    show TkEnd                  = "Key end"
-    show TkDash                 = "Key --"
-    show (TkUpIdentifier s)     = "Up "   ++ s
-    show (TkDownIdentifier s)   = "Down " ++ s
-    show (TkSymbolIdentifier s) = "Symb " ++ s
-    show (TkNumber s)           = "Num "  ++ s
-    show (TkString s)           = "Str "  ++ s
-    show (TkComment s)          = "Comment " ++ s
+    show TkOpenPar     = "("
+    show TkClosePar    = ")"
+    show TkOpenBrack   = "["
+    show TkCloseBrack  = "]"
+    show TkOpenCurly   = "{"
+    show TkCloseCurly  = "}"
+    show TkDo          = "Key do"
+    show TkBlock       = "Key block"
+    show TkType        = "Key type"
+    show TkEnd         = "Key end"
+    show TkDash        = "Key --"
+    show (TkName n)    = show n
+    show (TkComment s) = "Comment " ++ s
 
 data Loc = Loc
     { getLine :: Int
