@@ -1,26 +1,28 @@
 module IR.Bytecode
-    ( Bytecode(..), cons
+    ( Bytecode(..)
     , Chunk(..)
     , StkTyp(..)
     , ByteInst(..)
-    , emptyChunk
+    , emptyBytecode, cons, emptyChunk
     ) where
 
 import Types (TypeSig(..))
 import IR.AST (Builtin(..), ipp)
 import Dict (Dict)
-import qualified Dict (insert)
+import qualified Dict as D (insert, emptyDict)
 
 newtype Bytecode = Bytecode
     { dict :: Dict String Chunk
-    }
-    deriving Eq
+    } deriving Eq
 
 instance Show Bytecode where
     show (Bytecode ds) = "Bytecode " ++ show ds
 
+emptyBytecode :: Bytecode
+emptyBytecode = Bytecode D.emptyDict
+
 cons :: (String, Chunk) -> Bytecode -> Bytecode
-cons a (Bytecode as) = Bytecode $ uncurry Dict.insert a as
+cons a (Bytecode as) = Bytecode $ uncurry D.insert a as
 
 data Chunk = Chunk
     { typT  :: TypeSig
@@ -37,7 +39,7 @@ instance Show Chunk where
         " do " ++ show typ ++ " " ++ ipp is ++ "end"
 
 emptyChunk :: Chunk
-emptyChunk = Chunk (Tfunc [] []) [] $ Bytecode []
+emptyChunk = Chunk (Tfunc [] []) [] $ emptyBytecode
 
 data StkTyp
     = I64 Int

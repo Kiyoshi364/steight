@@ -1,6 +1,6 @@
 module Dict
     ( Dict
-    , insert
+    , emptyDict, insert
     , findPair, find, findPairWith, findWith
     , partPair, part, partPairWith, partWith
     ) where
@@ -9,6 +9,9 @@ import Utils (onPair, dup)
 import qualified Data.List as L (find, partition)
 
 type Dict k v = [(k, v)]
+
+emptyDict :: Dict k v
+emptyDict = []
 
 insert :: k -> v -> Dict k v -> Dict k v
 insert k v d = (k, v):d

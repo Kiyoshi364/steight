@@ -2,17 +2,25 @@ module IR.AST
     ( AST(..)
     , Builtin(..)
     , Inst(..)
+    , emptyAST, cons
     , ipp
     ) where
 
 import Types (TypeSig(..))
 import Dict (Dict)
+import qualified Dict as D (emptyDict, insert)
 
 data AST = AST
     { dict :: Dict String (Maybe TypeSig, [Inst])
     }
 
 instance Show AST where show (AST ds) = "AST " ++ show ds
+
+emptyAST :: AST
+emptyAST = AST D.emptyDict
+
+cons :: String -> (Maybe TypeSig, [Inst]) -> AST -> AST
+cons k v (AST d) = AST $ D.insert k v d
 
 ipp :: Show a => [a] -> String
 ipp = foldr (\ i s -> show i ++ " " ++ s) ""
