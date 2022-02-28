@@ -1,17 +1,17 @@
 module IR.AST
     ( AST(..)
     , Builtin(..)
+    , TypeLit(..)
     , Inst(..)
     , emptyAST, cons
     , ipp
     ) where
 
-import Types (TypeSig(..))
 import Dict (Dict)
 import qualified Dict as D (emptyDict, insert)
 
 data AST = AST
-    { dict :: Dict String (Maybe TypeSig, [Inst])
+    { dict :: Dict String (Maybe TypeLit, [Inst])
     }
 
 instance Show AST where show (AST ds) = "AST " ++ show ds
@@ -19,7 +19,7 @@ instance Show AST where show (AST ds) = "AST " ++ show ds
 emptyAST :: AST
 emptyAST = AST D.emptyDict
 
-cons :: String -> (Maybe TypeSig, [Inst]) -> AST -> AST
+cons :: String -> (Maybe TypeLit, [Inst]) -> AST -> AST
 cons k v (AST d) = AST $ D.insert k v d
 
 ipp :: Show a => [a] -> String
@@ -48,14 +48,26 @@ instance Show Builtin where
     show (Apply ) = "$"
     show (Halt  ) = "halt"
 
+data TypeLit = TypeLit [Inst] [Inst]
+    deriving Eq
+
+instance Show TypeLit where
+    show (TypeLit [] []) = "()"
+    show (TypeLit [] o ) = "( " ++ revcat o ++ ")"
+    show (TypeLit i  o ) = "( " ++ revcat i ++ "-- " ++ revcat o ++ ")"
+
+revcat :: Show a => [a] -> String
+revcat = foldr (\t s -> s ++ show t ++ " ") ""
+
 data Inst
     = Push Int
     | Builtin Builtin
     | PQuote [Inst]
+    | PType  TypeLit
     | Doblk [Inst]
     | Nameblk String [Inst]
-    | Typblk TypeSig [Inst]
-    | NameTypblk String TypeSig [Inst]
+    | Typblk TypeLit [Inst]
+    | NameTypblk String TypeLit [Inst]
     | Identifier String
     deriving Eq
 
@@ -63,6 +75,7 @@ instance Show Inst where
     show (Push    x) = show x
     show (Builtin b) = show b
     show (PQuote is) = "[ " ++ ipp is ++ "]"
+    show (PType typ) = show typ
     show (Doblk  is) = "do " ++ ipp is ++ "end"
     show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
         ipp is ++ "end"

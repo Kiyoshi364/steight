@@ -1,13 +1,9 @@
 module Parsing.Lexer
-    ( Tkn(..)
-    , Loc(..)
-    , Token(..)
-    , tokenize
+    ( tokenize
     , parseNum
-    , ppTokens
     ) where
 
-import IR.Token
+import IR.Token (Name(..), Tkn(..), Loc, Token(..), emptyLoc, adv)
 import Data.Bool (bool)
 import Utils (fork)
 
@@ -15,7 +11,7 @@ tokenize :: String -> [Token]
 tokenize = do_tokenize emptyLoc
 
 do_tokenize :: Loc -> String -> [Token]
-do_tokenize _  []    = []
+do_tokenize l  []    = Tk l TkEOF : []
 do_tokenize l (c:cs)
     | c == '('  = Tk l TkOpenPar    : do_tokenize (adv l c) cs
     | c == ')'  = Tk l TkClosePar   : do_tokenize (adv l c) cs
@@ -101,12 +97,13 @@ parseNum num@(c:cs)
         if head cs == '_' then parseNum cs
         else -1 * parseNum cs
     | c == '0'  =
-        case head cs of
-            'x' -> do_parseHex    $ tail cs
-            'o' -> do_parseOctal  $ tail cs
-            'b' -> do_parseBinary $ tail cs
-            _   -> do_parseNum           cs
-    | otherwise =  do_parseNum        (c:cs)
+        case cs of
+            ('x':zs) -> do_parseHex    $ zs
+            ('o':zs) -> do_parseOctal  $ zs
+            ('b':zs) -> do_parseBinary $ zs
+            []       -> 0
+            _   -> do_parseNum    cs
+    | otherwise =  do_parseNum (c:cs)
 
 do_parse_model :: Int -> (Char -> Int) -> String -> Int
 do_parse_model b f = foldl wrap 0
@@ -197,11 +194,24 @@ isValidBinary :: String -> Bool
 isValidBinary = isAllIn "_01"
 
 keywords :: [(Tkn, String)]
-keywords = [ (TkDo, "do")
+keywords =
+    [ (TkDo, "do")
     , (TkBlock, "block")
     , (TkType, "type")
     , (TkEnd, "end")
     , (TkDash, "--")
+    , (TkAdd, "+")
+    , (TkSub, "-")
+    , (TkSwap, "swap")
+    , (TkSwap, "~")
+    , (TkRot, "rot")
+    , (TkDup, ":")
+    , (TkDup, "dup")
+    , (TkDrop, ".")
+    , (TkDrop, "drop")
+    , (TkPrint, "print")
+    , (TkHalt, "halt")
+    , (TkApply, "$")
     ]
 
 isReserved :: String -> Bool

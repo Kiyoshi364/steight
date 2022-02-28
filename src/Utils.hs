@@ -101,6 +101,9 @@ instance Default e => Monoid (Id e) where
 
 data NonEmpty a = NonEmpty a [a]
 
+instance Show a => Show (NonEmpty a) where
+    show (NonEmpty a as) = show a ++ "::" ++ show as
+
 safeHead :: NonEmpty a -> a
 safeHead (NonEmpty a _) = a
 
