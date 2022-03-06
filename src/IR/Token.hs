@@ -62,7 +62,7 @@ data Tkn
     | TkDo | TkBlock | TkType | TkEnd | TkDash
     -- Builtins
     | TkAdd | TkSub | TkSwap | TkRot | TkDup
-    | TkDrop | TkPrint | TkHalt | TkApply
+    | TkDrop | TkPrint | TkApply | TkHalt
     -- Identifiers and Literals
     | TkName Name
     -- Comment
@@ -90,8 +90,8 @@ instance Show Tkn where
     show TkDup         = "Key :"
     show TkDrop        = "Key ."
     show TkPrint       = "Key print"
-    show TkHalt        = "Key halt"
     show TkApply       = "Key $"
+    show TkHalt        = "Key halt"
     show (TkName n)    = show n
     show (TkComment s) = "Comment " ++ s
     show TkEOF         = "EOF"
@@ -115,8 +115,8 @@ instance Match Tkn where
     match TkDup         TkDup         = True
     match TkDrop        TkDrop        = True
     match TkPrint       TkPrint       = True
-    match TkHalt        TkHalt        = True
     match TkApply       TkApply       = True
+    match TkHalt        TkHalt        = True
     match (TkName n)    (TkName m)    = match n m
     match (TkComment _) (TkComment _) = True
     match TkEOF         TkEOF         = True

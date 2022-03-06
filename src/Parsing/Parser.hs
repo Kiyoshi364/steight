@@ -33,8 +33,8 @@ parser = oneOrMoreP (
         |$> (\i -> case i of
             Nameblk    s     is -> (s, (Nothing , is))
             NameTypblk s typ is -> (s, (Just typ, is))
-            _ -> error "Inst.lexer: non-exhaustive pattern")
-        ) <* commentP <* match TkEOF
+            _ -> error "Parsing.parser: non-exhaustive pattern")
+        ) <* zeroOrMoreP commentP <* match TkEOF
         |$> asList \\ foldr (uncurry cons) emptyAST
 
 tk :: Tkn -> Token
@@ -55,7 +55,7 @@ getString t = error $ "Parsing.Parser.getString: expected TkName or " ++
     "TkComment found `" ++ show t ++ "`"
 
 inTypeP :: Parser Inst
-inTypeP = commentP *>
+inTypeP = zeroOrMoreP commentP *>
     (   pushIntP
     <|> builtinP
     <|> quotedP
@@ -64,14 +64,14 @@ inTypeP = commentP *>
     <|> errP)
 
 instP :: Parser Inst
-instP = commentP *>
+instP = zeroOrMoreP commentP *>
     ( inTypeP
     <|> typblkP <|> doblkP
     <|> nametypblkP <|> nameblkP
     <|> errP)
 
 topLvlP :: Parser Inst
-topLvlP = commentP *>
+topLvlP = zeroOrMoreP commentP *>
     ( nametypblkP <|> nameblkP
     <|> errP)
 
@@ -143,8 +143,8 @@ identifierP = Identifier <$> matchAnyName
 newIdP :: Parser String
 newIdP = matchAnyName [ NUp "" , NDown "" , NSymbol "" ]
 
-commentP :: Parser [String]
-commentP = zeroOrMoreP $ fmap (getString . tkn) $ matchP $ tk $ TkComment ""
+commentP :: Parser String
+commentP = fmap (getString . tkn) $ matchP $ tk $ TkComment ""
 
 errP :: Parser a
 errP = failWithErrP $ \ mt -> case mt of

@@ -3,8 +3,9 @@ module Main
     , iprog, bprog, tprog
     ) where
 
-import qualified Parser as P
-import Inst (Inst, Inst(..), Builtin(..), lexer, AST(..))
+import Parsing.Lexer (tokenize)
+import Parsing.Parser (parse)
+import IR.AST (Inst, Inst(..), Builtin(..), AST(..))
 import IR.Bytecode (Bytecode(Bytecode), Chunk(..), emptyChunk)
 import Typecheck (typecheckIO, typecheck)
 import Simulation (simulateIO)
@@ -16,19 +17,21 @@ main = do
     args <- getArgs
     path <- if args == [] then putStrLn "empty args" >> return ""
                            else return $ head args
-    line <- readFile path
+    input <- readFile path
     -- putStrLn "Args:"
     -- mapM putStrLn args
     -- putStr "reading: "
     -- line <- getLine
-    input <- return $ P.mkPathInput path line
     -- putStrLn $ (++) "input: " $ show input
-    parsed <- return $ P.runP lexer input
+    tokens <- return $ tokenize input
+    parsed <- return $ parse tokens
     -- putStrLn $ (++) "parsed: " $ either ("error: "++) (pp) $ P.value parsed
     -- putStrLn $ (++) "leftover: " $ show $ P.input parsed
-    prog <- case P.value parsed of
-        Left  l -> putStrLn l >> return (AST [("main", (Nothing, []))])
-        Right r ->               return  r
+    prog <- case parsed of
+        Left  errs -> putStrLn (foldMap
+            (\ (loc, err) -> "\n" ++ show loc ++ ": " ++ err) errs)
+            >> return (AST [("main", (Nothing, []))])
+        Right  r   -> return r
     putStrLn $ show prog
     putStrLn ""
     (p', ok) <- typecheckIO prog

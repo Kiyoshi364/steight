@@ -5,8 +5,10 @@ module IR.AST
     , Inst(..)
     , emptyAST, cons
     , ipp
+    , builtinTyp
     ) where
 
+import Types.TypeDef (TypeSig(..), ConstT(..))
 import Dict (Dict)
 import qualified Dict as D (emptyDict, insert)
 
@@ -63,7 +65,7 @@ data Inst
     = Push Int
     | Builtin Builtin
     | PQuote [Inst]
-    | PType  TypeLit
+    | PType TypeLit
     | Doblk [Inst]
     | Nameblk String [Inst]
     | Typblk TypeLit [Inst]
@@ -83,3 +85,21 @@ instance Show Inst where
     show (NameTypblk name typ is) = "block " ++ name ++ " <" ++
         show typ ++ "> " ++ ipp is ++ "end"
     show (Identifier ref) = "{" ++ ref ++ "}"
+
+i64 :: TypeSig
+i64 = Tconst I64
+
+tmany :: Int -> TypeSig
+tmany i = Tmany (i, 0)
+
+builtinTyp :: Builtin -> TypeSig
+builtinTyp b = case b of
+    Add     -> Tfunc [ i64   , i64            ] [ i64                    ]
+    Sub     -> Tfunc [ i64   , i64            ] [ i64                    ]
+    Swap    -> Tfunc [ Tvar 0, Tvar 1         ] [ Tvar 1, Tvar 0         ]
+    Rot     -> Tfunc [ Tvar 0, Tvar 1, Tvar 2 ] [ Tvar 2, Tvar 0, Tvar 1 ]
+    Dup     -> Tfunc [ Tvar 0                 ] [ Tvar 0, Tvar 0         ]
+    Drop    -> Tfunc [ Tvar 0                 ] [                        ]
+    Print   -> Tfunc [ Tvar 0                 ] [                        ]
+    Apply   -> Tfunc [ Tfunc [tmany 0] [tmany 1], tmany 0 ] [ tmany 1    ]
+    Halt    -> Tfunc [                        ] [                        ]

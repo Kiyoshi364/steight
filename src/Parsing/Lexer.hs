@@ -210,8 +210,8 @@ keywords =
     , (TkDrop, ".")
     , (TkDrop, "drop")
     , (TkPrint, "print")
-    , (TkHalt, "halt")
     , (TkApply, "$")
+    , (TkHalt, "halt")
     ]
 
 isReserved :: String -> Bool
