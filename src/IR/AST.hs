@@ -75,10 +75,7 @@ data Inst
     | Builtin Builtin
     | PQuote [Inst]
     | PType TypeLit
-    | Doblk [Inst]
-    | Nameblk String [Inst]
-    | Typblk TypeLit [Inst]
-    | NameTypblk String TypeLit [Inst]
+    | Block (Maybe String) (Maybe TypeLit) [Inst]
     | Identifier String
     deriving Eq
 
@@ -87,12 +84,10 @@ instance Show Inst where
     show (Builtin b) = show b
     show (PQuote is) = "[ " ++ ipp is ++ "]"
     show (PType typ) = show typ
-    show (Doblk  is) = "do " ++ ipp is ++ "end"
-    show (Typblk typ is) = "do <" ++ show typ ++ "> " ++
+    show (Block m_name m_typ is) =
+        maybe "do" (("block "++) . show) m_name ++
+        maybe " " (\ t -> " <" ++ show t ++ "> ") m_typ ++
         ipp is ++ "end"
-    show (Nameblk name is) = "block " ++ name ++ " " ++ ipp is ++ "end"
-    show (NameTypblk name typ is) = "block " ++ name ++ " <" ++
-        show typ ++ "> " ++ ipp is ++ "end"
     show (Identifier ref) = "{" ++ ref ++ "}"
 
 i64 :: TypeSig

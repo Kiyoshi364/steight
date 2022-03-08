@@ -42,7 +42,7 @@ main = do
 
 iprog :: [Inst]
 iprog = [
-    Doblk [Push 2, Push 1, Builtin Add],
+    Block Nothing Nothing [Push 2, Push 1, Builtin Add],
     Builtin Dup, Builtin Print, Push 3,
     Builtin Swap, Builtin Sub, Builtin Print
     ]

@@ -9,7 +9,7 @@ import IR.AST (AST(..), Builtin(..), AVar(..), TypeLit(..), Inst(..)
 import Parsing.Lexer (parseNum)
 import Parsing.ParserLib
     ( ParserLib(..), (<|>) , failWithErrP
-    , matchP, matchAnyP, zeroOrMoreP, oneOrMoreP
+    , matchP, matchAnyP, optP, zeroOrMoreP, oneOrMoreP
     )
 import Utils ((\\) , (|$>) , asList)
 
@@ -32,8 +32,7 @@ parser :: Parser AST
 parser = oneOrMoreP (
         topLvlP
         |$> (\i -> case i of
-            Nameblk    s     is -> (s, (Nothing , is))
-            NameTypblk s typ is -> (s, (Just typ, is))
+            Block (Just s) m_typ  is -> (s, (m_typ, is))
             _ -> error "Parsing.parser: non-exhaustive pattern")
         ) <* zeroOrMoreP commentP <* match TkEOF
         |$> asList \\ foldr (uncurry cons) emptyAST
@@ -67,14 +66,12 @@ inTypeP = zeroOrMoreP commentP *>
 instP :: Parser Inst
 instP = zeroOrMoreP commentP *>
     ( inTypeP
-    <|> typblkP <|> doblkP
-    <|> nametypblkP <|> nameblkP
+    <|> doblkP <|> nameblkP
     <|> errP)
 
 topLvlP :: Parser Inst
 topLvlP = zeroOrMoreP commentP *>
-    ( nametypblkP <|> nameblkP
-    <|> errP)
+    ( nameblkP <|> errP)
 
 pushIntP :: Parser Inst
 pushIntP = match (TkName $ NNumber "")
@@ -118,17 +115,15 @@ quotedP :: Parser Inst
 quotedP = PQuote <$> instseqp instP TkOpenBrack TkCloseBrack
 
 doblkP :: Parser Inst
-doblkP = Doblk <$> instseqp instP TkDo TkEnd
+doblkP = Block Nothing
+    <$> (match TkDo *> optP typeLitP)
+    <*> instendp instP TkEnd
 
 nameblkP :: Parser Inst
-nameblkP = Nameblk <$> (match TkBlock *> newIdP) <*> instendp instP TkEnd
-
-typblkP :: Parser Inst
-typblkP = Typblk <$> (match TkDo *> typeLitP) <*> instendp instP TkEnd
-
-nametypblkP :: Parser Inst
-nametypblkP = NameTypblk
-    <$> (match TkBlock *> newIdP) <*> typeLitP <*> instendp instP TkEnd
+nameblkP = Block
+    <$> (match TkBlock *> fmap Just newIdP)
+    <*> optP typeLitP
+    <*> instendp instP TkEnd
 
 instseqp :: Parser a -> Tkn -> Tkn -> Parser [a]
 instseqp p start end = match start *> instendp p end

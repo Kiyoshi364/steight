@@ -134,7 +134,7 @@ fromInst p a i = let
     case i of
         Push x    -> help i64 $ Bcode.Push $ ST.I64 x
         Builtin b -> help (builtinTyp b) $ Bcode.Builtin $ fromBuiltin b
-        PQuote xs -> fromInst p a (Doblk xs)
+        PQuote xs -> fromInst p a (Block Nothing Nothing xs)
             >>= return . \ (typ, p', a', Right (Bcode.Chk by_is))
                 -> (Tfunc [] [typ], p', a',
                     Right $ Bcode.Push $ ST.Quote typ $ insts by_is)
@@ -142,27 +142,45 @@ fromInst p a i = let
             >>= return . \ (p', a', typ)
                 -> (Tfunc [] [typ], p', a',
                     Right $ Bcode.Push $ ST.Type typ)
-        Doblk  xs -> typechunk p a "do-block" Nothing xs
-            >>= return . \ (("do-block",by_is):p', a')
-                -> (typT by_is, p', a', Right $ Bcode.Chk by_is)
-
-        Typblk tlit xs -> typetypelit p a tlit
-            >>= \ (p', a', typ) -> fromInst p' a' (Doblk xs)
-            >>= assertWith ((typ==) . (\(f, _, _, _) -> f))
-                    (\ (tp, _, _, _) ->
-                    "The typed-do-block `" ++ show (Doblk xs)
+        Block m_name m_tlit xs -> do
+            (p', a1) <- typechunk p a "do-block" Nothing xs
+            (by_is, p1) <- case p' of
+                (("do-block", by_is):p1) -> return (by_is, p1)
+                (top                :_ ) -> error $
+                    "Typecheck.fromInst.Block: unreacheable: " ++
+                    "found `" ++ show top ++ "` at the top of the program"
+                []                       -> error $
+                    "Typecheck.fromInst.Block: unreacheable: " ++
+                    "the program is empty"
+            (p2, a2, typ) <- maybe (Right (p1, a1, typT by_is)) id $
+                    typetypelit p a <$> m_tlit
+            _ <- assert typ (\ tp ->
+                    "The typed-" ++ maybe "do-" (const "") m_name
+                    ++ "block `" ++ show (Block m_name m_tlit xs)
                     ++ "` expected type was `"    ++ show typ
                     ++ "`, but actual type is `"  ++ show tp ++ "`")
-
-        Nameblk name xs ->
-            fromInst p a (Doblk xs)
-            >>= return . \ (_typ, p', a', Right (Bcode.Chk chk))
-                -> (Tfunc [] [], p', a', Left (name, chk))
-
-        NameTypblk name typ xs ->
-            fromInst p a (Typblk typ xs)
-            >>= return . \ (_typ, p', a', Right (Bcode.Chk chk))
-                -> (Tfunc [] [], p', a', Left (name, chk))
+                $ typT by_is
+            return $ maybe (typT by_is , p2, a2, Right $ Bcode.Chk by_is)
+                (\ name -> (Tfunc [] [], p2, a2, Left  $ (,) name  by_is))
+                m_name
+        -- Doblk  xs -> typechunk p a "do-block" Nothing xs
+        --     >>= return . \ (("do-block",by_is):p', a')
+        --         -> (typT by_is, p', a', Right $ Bcode.Chk by_is)
+        -- Typblk tlit xs -> typetypelit p a tlit
+        --     >>= \ (p', a', typ) -> fromInst p' a' (Doblk xs)
+        --     >>= assertWith ((typ==) . (\(f, _, _, _) -> f))
+        --             (\ (tp, _, _, _) ->
+        --             "The typed-do-block `" ++ show (Doblk xs)
+        --             ++ "` expected type was `"    ++ show typ
+        --             ++ "`, but actual type is `"  ++ show tp ++ "`")
+        -- Nameblk name xs ->
+        --     fromInst p a (Doblk xs)
+        --     >>= return . \ (_typ, p', a', Right (Bcode.Chk chk))
+        --         -> (Tfunc [] [], p', a', Left (name, chk))
+        -- NameTypblk name typ xs ->
+        --     fromInst p a (Typblk typ xs)
+        --     >>= return . \ (_typ, p', a', Right (Bcode.Chk chk))
+        --         -> (Tfunc [] [], p', a', Left (name, chk))
 
         Identifier ref -> case (find ref p, find ref a) of
             (Just chk, Nothing        ) ->
