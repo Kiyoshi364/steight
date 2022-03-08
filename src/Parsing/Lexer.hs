@@ -82,6 +82,12 @@ classify name@(c:cs)
     | isIntro    c     = TkName $ NIntro    name
     | isElim     c     = TkName $ NElim     name
     | isBuiltin  c     = TkName $ NBuiltin  name
+    | isTvar     c     = if isValidNum cs
+                    then TkName $ NTvar     cs
+                    else TkName $ NSymbol   name
+    | isTmany    c     = if isValidNum cs
+                    then TkName $ NTmany    cs
+                    else TkName $ NSymbol   name
     | isSymbol   c     = TkName $ NSymbol   name
     | isValidNum name  = TkName $ NNumber   name
     | isNumOrU   c     = error $
@@ -152,6 +158,12 @@ isElim = (== '!')
 isBuiltin :: Char -> Bool
 isBuiltin = (== '#')
 
+isTvar :: Char -> Bool
+isTvar = (== '\'')
+
+isTmany :: Char -> Bool
+isTmany = (== '%')
+
 isSymbol :: Char -> Bool
 isSymbol = isIn "'!@#$%&*-=+\\|/<>:~?,.;"
 
@@ -212,6 +224,7 @@ keywords =
     , (TkPrint, "print")
     , (TkApply, "$")
     , (TkHalt, "halt")
+    , (TkI64b, "I64")
     ]
 
 isReserved :: String -> Bool

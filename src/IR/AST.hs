@@ -1,6 +1,7 @@
 module IR.AST
     ( AST(..)
     , Builtin(..)
+    , AVar(..)
     , TypeLit(..)
     , Inst(..)
     , emptyAST, cons
@@ -37,6 +38,7 @@ data Builtin
     | Print
     | Halt
     | Apply
+    | I64b
     deriving Eq
 
 instance Show Builtin where
@@ -49,17 +51,24 @@ instance Show Builtin where
     show (Print ) = "print"
     show (Apply ) = "$"
     show (Halt  ) = "halt"
+    show (I64b  ) = "I64"
 
-data TypeLit = TypeLit [Inst] [Inst]
+data AVar = Avar Int | Amany Int
+    deriving (Show, Eq)
+
+data TypeLit = TypeLit [Either AVar Inst] [Either AVar Inst]
     deriving Eq
 
 instance Show TypeLit where
     show (TypeLit [] []) = "()"
-    show (TypeLit [] o ) = "( " ++ revcat o ++ ")"
-    show (TypeLit i  o ) = "( " ++ revcat i ++ "-- " ++ revcat o ++ ")"
+    show (TypeLit [] o ) = "( " ++ revcatTL o ++ ")"
+    show (TypeLit i  o ) = "( " ++ revcatTL i ++ "-- " ++ revcatTL o ++ ")"
 
-revcat :: Show a => [a] -> String
-revcat = foldr (\t s -> s ++ show t ++ " ") ""
+revcatTL :: [Either AVar Inst] -> String
+revcatTL = foldr (\t s -> s ++ f t ++ " ") ""
+  where
+    f :: Either AVar Inst -> String
+    f = either show show
 
 data Inst
     = Push Int
@@ -89,6 +98,9 @@ instance Show Inst where
 i64 :: TypeSig
 i64 = Tconst I64
 
+ttyp :: TypeSig
+ttyp = Tconst Type
+
 tmany :: Int -> TypeSig
 tmany i = Tmany (i, 0)
 
@@ -103,3 +115,4 @@ builtinTyp b = case b of
     Print   -> Tfunc [ Tvar 0                 ] [                        ]
     Apply   -> Tfunc [ Tfunc [tmany 0] [tmany 1], tmany 0 ] [ tmany 1    ]
     Halt    -> Tfunc [                        ] [                        ]
+    I64b    -> Tfunc [                        ] [ ttyp                   ]

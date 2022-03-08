@@ -12,14 +12,16 @@ import Parsing.ParserLib (Match(..))
 import Prelude hiding (getLine)
 
 data Name
-    = NUp      String
-    | NDown    String
-    | NIntro   String
-    | NElim    String
-    | NBuiltin String
-    | NSymbol  String
-    | NNumber  String
-    | NString  String
+    = NUp      String       -- starts with uppercase  , is a type
+    | NDown    String       -- starts with lowercase  , is anything
+    | NIntro   String       -- starts with !          , is a type ctor
+    | NElim    String       -- starts with @          , is a type dtor
+    | NBuiltin String       -- starts with #          , is a builtin function
+    | NTvar    String       -- starts with '          , is a type variable
+    | NTmany   String       -- starts with %          , is a type var args
+    | NSymbol  String       -- starts with a symbol   , is anything
+    | NNumber  String       -- starts with _ or number, is a number
+    | NString  String       -- starts with "          , is a string
     deriving Eq
 
 instance Show Name where
@@ -28,6 +30,8 @@ instance Show Name where
     show (NIntro   s) = "Intro "    ++ s
     show (NElim    s) = "Elim "     ++ s
     show (NBuiltin s) = "Builtin "  ++ s
+    show (NTvar    s) = "Tvar "     ++ s
+    show (NTmany   s) = "Tmany "    ++ s
     show (NSymbol  s) = "Symb "     ++ s
     show (NNumber  s) = "Num "      ++ s
     show (NString  s) = "Str "      ++ s
@@ -38,6 +42,8 @@ instance Match Name where
     match (NIntro   _) (NIntro   _) = True
     match (NElim    _) (NElim    _) = True
     match (NBuiltin _) (NBuiltin _) = True
+    match (NTvar    _) (NTvar    _) = True
+    match (NTmany   _) (NTmany   _) = True
     match (NSymbol  _) (NSymbol  _) = True
     match (NNumber  _) (NNumber  _) = True
     match (NString  _) (NString  _) = True
@@ -49,6 +55,8 @@ fromName (NDown    s) = s
 fromName (NIntro   s) = s
 fromName (NElim    s) = s
 fromName (NBuiltin s) = s
+fromName (NTvar    s) = s
+fromName (NTmany   s) = s
 fromName (NSymbol  s) = s
 fromName (NNumber  s) = s
 fromName (NString  s) = s
@@ -62,7 +70,7 @@ data Tkn
     | TkDo | TkBlock | TkType | TkEnd | TkDash
     -- Builtins
     | TkAdd | TkSub | TkSwap | TkRot | TkDup
-    | TkDrop | TkPrint | TkApply | TkHalt
+    | TkDrop | TkPrint | TkApply | TkHalt | TkI64b
     -- Identifiers and Literals
     | TkName Name
     -- Comment
@@ -92,6 +100,7 @@ instance Show Tkn where
     show TkPrint       = "Key print"
     show TkApply       = "Key $"
     show TkHalt        = "Key halt"
+    show TkI64b        = "Key I64"
     show (TkName n)    = show n
     show (TkComment s) = "Comment " ++ s
     show TkEOF         = "EOF"
@@ -117,6 +126,7 @@ instance Match Tkn where
     match TkPrint       TkPrint       = True
     match TkApply       TkApply       = True
     match TkHalt        TkHalt        = True
+    match TkI64b        TkI64b        = True
     match (TkName n)    (TkName m)    = match n m
     match (TkComment _) (TkComment _) = True
     match TkEOF         TkEOF         = True

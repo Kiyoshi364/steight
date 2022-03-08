@@ -4,7 +4,8 @@ module Parsing.Parser
 
 import IR.Token (Name(..), Tkn(..), Loc, Token(..)
     , fromName, emptyLoc, ppTokens)
-import IR.AST (AST(..), Builtin(..), TypeLit(..), Inst(..), cons, emptyAST)
+import IR.AST (AST(..), Builtin(..), AVar(..), TypeLit(..), Inst(..)
+    , cons, emptyAST)
 import Parsing.Lexer (parseNum)
 import Parsing.ParserLib
     ( ParserLib(..), (<|>) , failWithErrP
@@ -76,7 +77,7 @@ topLvlP = zeroOrMoreP commentP *>
     <|> errP)
 
 pushIntP :: Parser Inst
-pushIntP = matchP (tk $ TkName $ NNumber "")
+pushIntP = match (TkName $ NNumber "")
         |$> (tkn \\ getString \\ parseNum \\ Push)
 
 builtinP :: Parser Inst
@@ -144,7 +145,7 @@ newIdP :: Parser String
 newIdP = matchAnyName [ NUp "" , NDown "" , NSymbol "" ]
 
 commentP :: Parser String
-commentP = fmap (getString . tkn) $ matchP $ tk $ TkComment ""
+commentP = fmap (getString . tkn) $ match $ TkComment ""
 
 errP :: Parser a
 errP = failWithErrP $ \ mt -> case mt of
@@ -152,10 +153,17 @@ errP = failWithErrP $ \ mt -> case mt of
     Nothing        -> error "Parsing.Parser.errP: found end of tokens"
 
 typeLitP :: Parser TypeLit
-typeLitP = TypeLit . reverse <$> inpp <*> fmap reverse outp
+typeLitP = TypeLit <$> inpp <*> outp
   where
-    inpp :: Parser [Inst]
-    inpp = instseqp inTypeP TkOpenPar TkDash
+    inpp :: Parser [Either AVar Inst]
+    inpp = reverse <$> instseqp typp TkOpenPar TkDash
         <|> match TkOpenPar *> pure []
-    outp :: Parser [Inst]
-    outp = instendp inTypeP TkClosePar
+    outp :: Parser [Either AVar Inst]
+    outp = reverse <$> instendp typp TkClosePar
+    typp :: Parser (Either AVar Inst)
+    typp = Right <$> inTypeP
+        <|> match TkI64b *> pure (Right $ Builtin I64b)
+        <|> tkn \\ getString \\ parseNum \\ Avar \\ Left
+            <$> (match (TkName $ NTvar ""))
+        <|> tkn \\ getString \\ parseNum \\ Amany \\ Left
+            <$> (match (TkName $ NTmany ""))

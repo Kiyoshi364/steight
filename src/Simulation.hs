@@ -2,8 +2,8 @@ module Simulation
     ( simulateIO, simulate
     ) where
 
-import IR.AST (Builtin(..))
-import IR.Bytecode (Bytecode(..), Chunk(..), StkTyp(..), ByteInst(..))
+import IR.Bytecode
+    (Bytecode(..), Chunk(..), StkTyp(..), Builtin(..), ByteInst(..))
 import Utils (fork, loop)
 import Dict (find)
 

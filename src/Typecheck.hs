@@ -3,9 +3,10 @@ module Typecheck
     )where
 
 import Types (TypeSig(..), ConstT(..), compose)
-import IR.AST as AST (AST(..), Inst(..), TypeLit(..), builtinTyp)
+import IR.AST as AST
+    (AST(..), Builtin(I64b), Inst(..), AVar(..), TypeLit(..), builtinTyp)
 import IR.Bytecode as Bcode
-    (Bytecode(..), cons, Chunk(..), emptyChunk, ByteInst)
+    (Bytecode(..), cons, Chunk(..), emptyChunk, ByteInst, fromBuiltin)
 import qualified IR.Bytecode as ST (StkTyp(..))
 import qualified IR.Bytecode as Bcode (ByteInst(..))
 import Utils (assert, assertWith, loop)
@@ -57,7 +58,6 @@ iter (errs, prog, (str, (m_tl, is)):ast) = Right $
                 Right (p, a, tp) -> (   errs, p   , a  , Just tp)
             )
             m_tl
-            -- (flip (,) Nothing . (:[])) ((,) [] . Just)) m_tl
     in
     case typechunk prog ast str m_tp is of
         Left  err    -> (err:errs', prog', ast')
@@ -65,17 +65,30 @@ iter (errs, prog, (str, (m_tl, is)):ast) = Right $
 
 typetypelit :: ByteDict -> ASTDict -> TypeLit
     -> Either String (ByteDict, ASTDict, TypeSig)
-typetypelit p a (TypeLit i o) = case fromInst p a (Doblk i) of
-    Left err                          -> Left err
-    Right (Tfunc typ_i [], p', a', _) ->
-        case fromInst p' a' (Doblk o) of
-            Left err                            -> Left err
-            Right (Tfunc typ_o [], p'', a'', _) ->
-                Right (p'', a'', Tfunc typ_i typ_o)
-            x -> error $ "Typecheck.typetypelit: unhandled match case: "
-                ++ show x
-    x -> error $ "Typecheck.typetypelit: unhandled match case: "
-        ++ show x
+typetypelit p a (TypeLit i o) = do
+    (p1, a1, tin ) <- toTypeSigList p  a  i
+    (p2, a2, tout) <- toTypeSigList p1 a1 o
+    return (p2, a2, Tfunc tin tout)
+  where
+    toTypeSigList :: ByteDict -> ASTDict -> [Either AVar Inst]
+        -> Either String (ByteDict, ASTDict, [TypeSig])
+    toTypeSigList pt at = foldl (\ pack x -> do
+            (p', a', xs) <- pack
+            (p'', a'', x'') <- f p' a' x
+            return (p'', a'', xs ++ [x''])
+        ) $ Right (pt, at, [])
+    f :: ByteDict -> ASTDict -> Either AVar Inst
+        -> Either String (ByteDict, ASTDict, TypeSig)
+    f pf af (Left  (Avar  v)     ) = Right $ (,,) pf af $ Tvar   v
+    f pf af (Left  (Amany v)     ) = Right $ (,,) pf af $ Tmany (v, 0)
+    f pf af (Right (Builtin I64b)) = Right $ (,,) pf af $ Tconst I64
+    f pf af (Right  inst         ) = case inst of
+        PType   tlit -> typetypelit pf af tlit
+        Identifier _ -> err "identifier"
+        _            -> err "generic"
+      where
+        err s = Left $ "Typecheck.typetypelit: (" ++ s ++ ") instruction " ++
+            show inst ++ " is not suported yet"
 
 typechunk :: ByteDict -> ASTDict -> String -> Maybe TypeSig ->
     [Inst] -> Either String (ByteDict, ASTDict)
@@ -120,7 +133,7 @@ fromInst p a i = let
         (,,,) tp p a . Right in
     case i of
         Push x    -> help i64 $ Bcode.Push $ ST.I64 x
-        Builtin b -> help (builtinTyp b) $ Bcode.Builtin b
+        Builtin b -> help (builtinTyp b) $ Bcode.Builtin $ fromBuiltin b
         PQuote xs -> fromInst p a (Doblk xs)
             >>= return . \ (typ, p', a', Right (Bcode.Chk by_is))
                 -> (Tfunc [] [typ], p', a',
