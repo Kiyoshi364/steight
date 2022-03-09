@@ -37,7 +37,7 @@ main = do
     putStrLn ""
     (p', ok) <- typecheckIO prog
     putStrLn $ show p'
-    _ <- if ok then putStrLn "=== simulation ===" >> simulateIO p'
+    _ <- if ok then putStrLn "\n=== simulation ===" >> simulateIO p'
           else simulateIO $ Bytecode [("main", emptyChunk)]
     return ()
 
