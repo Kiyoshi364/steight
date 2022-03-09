@@ -6,7 +6,7 @@ block main
     // Push 4 (stack: 3 4)
     4
     // Swap (stack: 4 3), sub, inspect
-    ~- inspect
+    ~ - inspect
     drop
 end
 

@@ -9,7 +9,7 @@ block main
 
     // You may annotate the type
     // right after the "do"
-    do [ -- I64] 2 : - end print
+    do ( -- I64 ) 2 : - end print
 
     // There is no need for the `do-block`
     // be in a sigle line
@@ -18,7 +18,7 @@ block main
     end print
 
     // Neither to be at the start of a line
-    5 do [ -- I64 ]
+    5 do ( -- I64 )
         4
     end + print
 end
