@@ -13,12 +13,7 @@ tokenize = do_tokenize emptyLoc
 do_tokenize :: Loc -> String -> [Token]
 do_tokenize l  []    = Tk l TkEOF : []
 do_tokenize l (c:cs)
-    | c == '('  = Tk l TkOpenPar    : do_tokenize (adv l c) cs
-    | c == ')'  = Tk l TkClosePar   : do_tokenize (adv l c) cs
-    | c == '['  = Tk l TkOpenBrack  : do_tokenize (adv l c) cs
-    | c == ']'  = Tk l TkCloseBrack : do_tokenize (adv l c) cs
-    | c == '{'  = Tk l TkOpenCurly  : do_tokenize (adv l c) cs
-    | c == '}'  = Tk l TkCloseCurly : do_tokenize (adv l c) cs
+    | isPar c   = Tk l (parToken c) : do_tokenize (adv l c) cs
     | isWhite c =                     do_tokenize (adv l c) cs
     | c == '"'  = string l (adv l c) [] cs
     | isComment (c:cs) = comment l (adv l c) [] (tail cs)
@@ -66,9 +61,10 @@ comment sloc l s (c:cs)
 scan :: Loc -> Loc -> String -> String -> [Token]
 scan sloc l s  []    = identify (reverse s) sloc : do_tokenize l []
 scan sloc l s (c:cs)
-    | isWhite c = identify (reverse s) sloc : do_tokenize l (c:cs)
-    | c == '"'  = identify (reverse s) sloc : do_tokenize l (c:cs)
-    | otherwise = scan sloc (adv l c) (c:s) cs
+    | shouldStop = identify (reverse s) sloc : do_tokenize l (c:cs)
+    | otherwise  = scan sloc (adv l c) (c:s) cs
+  where
+    shouldStop  = isPar c || isWhite c || '"' == c
 
 identify :: String -> Loc -> Token
 identify = flip Tk . classify
@@ -139,6 +135,19 @@ isIn list = or . flip map (map (==) list) . flip ($)
 
 isAllIn :: Eq a => [a] -> [a] -> Bool
 isAllIn list = foldr ((&&) . isIn list) True
+
+isPar :: Char -> Bool
+isPar = isIn "()[]{}"
+
+parToken :: Char -> Tkn
+parToken c
+    | c == '('  = TkOpenPar
+    | c == ')'  = TkClosePar
+    | c == '['  = TkOpenBrack
+    | c == ']'  = TkCloseBrack
+    | c == '{'  = TkOpenCurly
+    | c == '}'  = TkCloseCurly
+    | otherwise = error $ "Parsing.parToken: invalid parenthesis"
 
 isWhite :: Char -> Bool
 isWhite = isIn " \t\r\n"
