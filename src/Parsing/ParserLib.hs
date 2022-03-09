@@ -71,8 +71,9 @@ eofP = eofWithErrP mempty
 matchWithErr2P :: (Stream l, Match t)
     => (t -> Maybe t -> e) -> t -> ParserLib e l t t
 matchWithErr2P err t = ParserLib $ \ input -> case take_1 input of
-    Just (t', s') -> (,) s' $
-            if match t t' then Right t' else Left $ err t $ Just t'
+    Just (t', s') -> if match t t'
+        then (s', Right t')
+        else (input, Left $ err t $ Just t')
     Nothing       -> (,) input $ Left $ err t Nothing
 
 matchWithErr1P :: (Stream l, Match t)
