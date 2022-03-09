@@ -3,18 +3,20 @@ module IR.AST
     , Builtin(..)
     , AVar(..)
     , TypeLit(..)
-    , Inst(..)
+    , Inst
+    , Instruction(..)
     , emptyAST, cons
     , ipp
     , builtinTyp
     ) where
 
+import IR.Token (Loc)
 import Types.TypeDef (TypeSig(..), ConstT(..))
 import Dict (Dict)
 import qualified Dict as D (emptyDict, insert)
 
 data AST = AST
-    { dict :: Dict String (Maybe TypeLit, [Inst])
+    { dict :: Dict String (Loc, Maybe TypeLit, [Inst])
     }
 
 instance Show AST where show (AST ds) = "AST " ++ show ds
@@ -22,7 +24,7 @@ instance Show AST where show (AST ds) = "AST " ++ show ds
 emptyAST :: AST
 emptyAST = AST D.emptyDict
 
-cons :: String -> (Maybe TypeLit, [Inst]) -> AST -> AST
+cons :: String -> (Loc, Maybe TypeLit, [Inst]) -> AST -> AST
 cons k v (AST d) = AST $ D.insert k v d
 
 ipp :: Show a => [a] -> String
@@ -70,7 +72,7 @@ revcatTL = foldr (\t s -> s ++ f t ++ " ") ""
     f :: Either AVar Inst -> String
     f = either show show
 
-data Inst
+data Instruction
     = Push Int
     | Builtin Builtin
     | PQuote [Inst]
@@ -79,7 +81,7 @@ data Inst
     | Identifier String
     deriving Eq
 
-instance Show Inst where
+instance Show Instruction where
     show (Push    x) = show x
     show (Builtin b) = show b
     show (PQuote is) = "[ " ++ ipp is ++ "]"
@@ -89,6 +91,8 @@ instance Show Inst where
         maybe " " (\ t -> " <" ++ show t ++ "> ") m_typ ++
         ipp is ++ "end"
     show (Identifier ref) = "{" ++ ref ++ "}"
+
+type Inst = (,) Loc Instruction
 
 i64 :: TypeSig
 i64 = Tconst I64

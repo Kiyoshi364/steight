@@ -5,7 +5,8 @@ module Main
 
 import Parsing.Lexer (tokenize)
 import Parsing.Parser (parse)
-import IR.AST (Inst, Inst(..), Builtin(..), AST(..))
+import IR.Token (emptyLoc)
+import IR.AST (Inst, Instruction(..), Builtin(..), AST(..))
 import IR.Bytecode (Bytecode(Bytecode), Chunk(..), emptyChunk)
 import Typecheck (typecheckIO, typecheck)
 import Simulation (simulateIO)
@@ -30,7 +31,7 @@ main = do
     prog <- case parsed of
         Left  errs -> putStrLn (foldMap
             (\ (loc, err) -> "\n" ++ show loc ++ ": " ++ err) errs)
-            >> return (AST [("main", (Nothing, []))])
+            >> return (AST [("main", (emptyLoc, Nothing, []))])
         Right  r   -> return r
     putStrLn $ show prog
     putStrLn ""
@@ -42,13 +43,17 @@ main = do
 
 iprog :: [Inst]
 iprog = [
-    Block Nothing Nothing [Push 2, Push 1, Builtin Add],
-    Builtin Dup, Builtin Print, Push 3,
-    Builtin Swap, Builtin Sub, Builtin Print
+    toI (Block Nothing Nothing) [toI Push 2, toI Push 1, toI Builtin Add],
+    toI Builtin Dup, toI Builtin Print, toI Push 3,
+    toI Builtin Swap, toI Builtin Sub, toI Builtin Print
     ]
 
+toI :: (a -> Instruction) -> a -> Inst
+toI f x = (emptyLoc, f x)
+
 bprog :: Dict String Chunk
-bprog = (\ (_, b, _) -> b) $ typecheck $ AST [("main", (Nothing, iprog))]
+bprog = (\ (_, b, _) -> b) $ typecheck
+    $ AST [("main", (emptyLoc, Nothing, iprog))]
 
 tprog :: Bytecode
 tprog = Bytecode bprog

@@ -4,14 +4,14 @@ module Parsing.Parser
 
 import IR.Token (Name(..), Tkn(..), Loc, Token(..)
     , fromName, emptyLoc, ppTokens)
-import IR.AST (AST(..), Builtin(..), AVar(..), TypeLit(..), Inst(..)
-    , cons, emptyAST)
+import IR.AST (AST(..), Builtin(..), AVar(..), TypeLit(..)
+    , Inst, Instruction(..), cons, emptyAST)
 import Parsing.Lexer (parseNum)
 import Parsing.ParserLib
     ( ParserLib(..), (<|>) , failWithErrP
     , matchP, matchAnyP, optP, zeroOrMoreP, oneOrMoreP
     )
-import Utils ((\\) , (|$>) , asList)
+import Utils ((\\) , (|$>) , (\\\) , fork, onSnd, asList)
 
 type Error = [] (Loc, String)
 type Parser = ParserLib Error [] Token
@@ -31,8 +31,8 @@ parse tokens = case runP parser tokens of
 parser :: Parser AST
 parser = oneOrMoreP (
         topLvlP
-        |$> (\i -> case i of
-            Block (Just s) m_typ  is -> (s, (m_typ, is))
+        |$> (\ i -> case i of
+            (l, Block (Just s) m_typ is) -> (s, (l, m_typ, is))
             _ -> error "Parsing.parser: non-exhaustive pattern")
         ) <* zeroOrMoreP commentP <* match TkEOF
         |$> asList \\ foldr (uncurry cons) emptyAST
@@ -43,10 +43,10 @@ tk = Tk emptyLoc
 match :: Tkn -> Parser Token
 match = matchP . tk
 
-matchAnyName :: [Name] -> Parser String
+matchAnyName :: [Name] -> Parser (Loc, String)
 matchAnyName = fmap (TkName \\ tk)
     \\ matchAnyP
-    \\ fmap (tkn \\ getString)
+    \\ fmap (fork (,) loc (tkn \\ getString))
 
 getString :: Tkn -> String
 getString (TkName n) = fromName n
@@ -60,7 +60,7 @@ inTypeP = zeroOrMoreP commentP *>
     <|> builtinP
     <|> quotedP
     <|> identifierP
-    <|> fmap PType typeLitP
+    <|> fmap (onSnd PType) typeLitP
     <|> errP)
 
 instP :: Parser Inst
@@ -70,95 +70,103 @@ instP = zeroOrMoreP commentP *>
     <|> errP)
 
 topLvlP :: Parser Inst
-topLvlP = zeroOrMoreP commentP *>
-    ( nameblkP <|> errP)
+topLvlP = zeroOrMoreP commentP *> (nameblkP <|> errP)
 
 pushIntP :: Parser Inst
 pushIntP = match (TkName $ NNumber "")
-        |$> (tkn \\ getString \\ parseNum \\ Push)
+        |$> fork (,) loc (tkn \\ getString \\ parseNum \\ Push)
 
 builtinP :: Parser Inst
-builtinP = fmap Builtin $
+builtinP = fmap (onSnd Builtin) $
         addP   <|> subP
     <|> swapP  <|> rotP <|> dupP  <|> dropP
     <|> printP <|> haltP
     <|> applyP
 
-addP :: Parser Builtin
-addP = match TkAdd *> pure Add
+addP :: Parser (Loc, Builtin)
+addP = (,) . loc <$> match TkAdd <*> pure Add
 
-subP :: Parser Builtin
-subP = match TkSub *> pure Sub
+subP :: Parser (Loc, Builtin)
+subP = (,) . loc <$> match TkSub <*> pure Sub
 
-swapP :: Parser Builtin
-swapP = match TkSwap *> pure Swap
+swapP :: Parser (Loc, Builtin)
+swapP = (,) . loc <$> match TkSwap <*> pure Swap
 
-rotP :: Parser Builtin
-rotP = match TkRot *> pure Rot
+rotP :: Parser (Loc, Builtin)
+rotP = (,) . loc <$> match TkRot <*> pure Rot
 
-dupP  :: Parser Builtin
-dupP  = match TkDup *> pure Dup
+dupP  :: Parser (Loc, Builtin)
+dupP  = (,) . loc <$> match TkDup <*> pure Dup
 
-dropP :: Parser Builtin
-dropP = match TkDrop *> pure Drop
+dropP :: Parser (Loc, Builtin)
+dropP = (,) . loc <$> match TkDrop <*> pure Drop
 
-printP :: Parser Builtin
-printP = match TkPrint *> pure Print
+printP :: Parser (Loc, Builtin)
+printP = (,) . loc <$> match TkPrint <*> pure Print
 
-haltP :: Parser Builtin
-haltP = match TkHalt *> pure Halt
+haltP :: Parser (Loc, Builtin)
+haltP = (,) . loc <$> match TkHalt <*> pure Halt
 
-applyP :: Parser Builtin
-applyP = match TkApply *> pure Apply
+applyP :: Parser (Loc, Builtin)
+applyP = (,) . loc <$> match TkApply <*> pure Apply
 
 quotedP :: Parser Inst
-quotedP = PQuote <$> instseqp instP TkOpenBrack TkCloseBrack
+quotedP = onSnd PQuote <$> instseqp instP TkOpenBrack TkCloseBrack
 
 doblkP :: Parser Inst
-doblkP = Block Nothing
-    <$> (match TkDo *> optP typeLitP)
-    <*> instendp instP TkEnd
+doblkP = (,) . loc
+    <$> match TkDo
+    <*> (Block Nothing
+        <$> optP (fmap snd typeLitP)
+        <*> instructionendp instP TkEnd)
 
 nameblkP :: Parser Inst
-nameblkP = Block
-    <$> (match TkBlock *> fmap Just newIdP)
-    <*> optP typeLitP
-    <*> instendp instP TkEnd
+nameblkP = (,) . loc
+    <$> match TkBlock
+    <*> (Block
+        <$> fmap (Just . snd) newIdP
+        <*> optP (fmap snd typeLitP)
+        <*> instructionendp instP TkEnd)
 
-instseqp :: Parser a -> Tkn -> Tkn -> Parser [a]
-instseqp p start end = match start *> instendp p end
+instructionseqp :: Parser a -> Tkn -> Tkn -> Parser [a]
+instructionseqp p start end = match start *> instructionendp p end
 
-instendp :: Parser a -> Tkn -> Parser [a]
-instendp p end = zeroOrMoreP p <* match end
+instructionendp :: Parser a -> Tkn -> Parser [a]
+instructionendp p end = zeroOrMoreP p <* match end
+
+instseqp :: Parser (Loc, a) -> Tkn -> Tkn -> Parser (Loc, [(Loc, a)])
+instseqp p start end = instructionseqp p start end
+    |$> foldr (\ x@(l,_) (_,xs) -> (l, x:xs) ) (emptyLoc, [])
 
 identifierP :: Parser Inst
-identifierP = Identifier <$> matchAnyName
+identifierP = onSnd Identifier <$> matchAnyName
     [ NUp      "" , NDown    "" , NIntro   ""
     , NElim    "" , NBuiltin "" , NSymbol  "" ]
 
-newIdP :: Parser String
+newIdP :: Parser (Loc, String)
 newIdP = matchAnyName [ NUp "" , NDown "" , NSymbol "" ]
 
-commentP :: Parser String
-commentP = fmap (getString . tkn) $ match $ TkComment ""
+commentP :: Parser (Loc, String)
+commentP = fmap (fork (,) loc $ getString . tkn) $ match $ TkComment ""
 
 errP :: Parser a
 errP = failWithErrP $ \ mt -> case mt of
     Just (Tk l tn) -> (:[]) $ (,) l $ "Unexpected token found:" ++ show tn
     Nothing        -> error "Parsing.Parser.errP: found end of tokens"
 
-typeLitP :: Parser TypeLit
-typeLitP = TypeLit <$> inpp <*> outp
+typeLitP :: Parser (Loc, TypeLit)
+typeLitP = (\ (l,i) o -> (l, TypeLit i o)) <$> inpp <*> outp
   where
-    inpp :: Parser [Either AVar Inst]
-    inpp = reverse <$> instseqp typp TkOpenPar TkDash
-        <|> match TkOpenPar *> pure []
+    inpp :: Parser (Loc, [Either AVar Inst])
+    inpp = onSnd (map snd \\ reverse) <$> instseqp typp TkOpenPar TkDash
+        <|> (,) . loc <$> match TkOpenPar <*> pure []
     outp :: Parser [Either AVar Inst]
-    outp = reverse <$> instendp typp TkClosePar
-    typp :: Parser (Either AVar Inst)
-    typp = Right <$> inTypeP
-        <|> match TkI64b *> pure (Right $ Builtin I64b)
-        <|> tkn \\ getString \\ parseNum \\ Avar \\ Left
+    outp = map snd \\ reverse <$> instructionendp typp TkClosePar
+    typp :: Parser (Loc, Either AVar Inst)
+    typp = fork (,) fst Right <$> inTypeP
+        <|> (,) \\\ uncurry (\ t e_ai -> (loc t, (,) (loc t) <$> e_ai))
+            <$> match TkI64b <*> pure (Right $ Builtin I64b)
+        <|> fork (,) loc (tkn \\ getString \\ parseNum \\ Avar \\ Left)
             <$> (match (TkName $ NTvar ""))
-        <|> tkn \\ getString \\ parseNum \\ Amany \\ Left
+        <|> fork (,) loc (tkn \\ getString \\ parseNum \\ Amany \\ Left)
             <$> (match (TkName $ NTmany ""))

@@ -3,8 +3,10 @@ module Typecheck
     )where
 
 import Types (TypeSig(..), ConstT(..), compose)
+import IR.Token (Loc)
 import IR.AST as AST
-    (AST(..), Builtin(I64b), Inst(..), AVar(..), TypeLit(..), builtinTyp)
+    (AST(..), Builtin(I64b), Inst, Instruction(..), AVar(..), TypeLit(..),
+    builtinTyp)
 import IR.Bytecode as Bcode
     (Bytecode(..), cons, Chunk(..), emptyChunk, ByteInst, fromBuiltin)
 import qualified IR.Bytecode as ST (StkTyp(..))
@@ -12,7 +14,7 @@ import qualified IR.Bytecode as Bcode (ByteInst(..))
 import Utils (assert, assertWith, loop)
 import Dict (Dict, insert, find, partPair)
 
-type ASTDict  = Dict String (Maybe TypeLit, [Inst])
+type ASTDict  = Dict String (Loc, Maybe TypeLit, [Inst])
 type ByteDict  = Dict String Chunk
 
 typecheckIO :: AST -> IO (Bytecode, Bool)
@@ -51,7 +53,7 @@ typecheck ast = fst $ loop iter ([], [], AST.dict ast)
 iter :: ([String], ByteDict, ASTDict)
     -> Either () ([String], ByteDict, ASTDict)
 iter (   _,    _,  []          ) = Left ()
-iter (errs, prog, (str, (m_tl, is)):ast) = Right $
+iter (errs, prog, (str, (l, m_tl, is)):ast) = Right $
     let (errs', prog', ast', m_tp) = maybe (errs, prog, ast, Nothing) (
             \ tlit -> case typetypelit prog ast tlit of
                 Left er          -> (er:errs, prog, ast, Nothing)
@@ -59,7 +61,7 @@ iter (errs, prog, (str, (m_tl, is)):ast) = Right $
             )
             m_tl
     in
-    case typechunk prog ast str m_tp is of
+    case typechunk prog ast str m_tp l is of
         Left  err    -> (err:errs', prog', ast')
         Right (p, a) -> (    errs', p    , a   )
 
@@ -79,62 +81,68 @@ typetypelit p a (TypeLit i o) = do
         ) $ Right (pt, at, [])
     f :: ByteDict -> ASTDict -> Either AVar Inst
         -> Either String (ByteDict, ASTDict, TypeSig)
-    f pf af (Left  (Avar  v)     ) = Right $ (,,) pf af $ Tvar   v
-    f pf af (Left  (Amany v)     ) = Right $ (,,) pf af $ Tmany (v, 0)
-    f pf af (Right (Builtin I64b)) = Right $ (,,) pf af $ Tconst I64
-    f pf af (Right  inst         ) = case inst of
+    f pf af (Left  (Avar  v)        ) = Right $ (,,) pf af $ Tvar   v
+    f pf af (Left  (Amany v)        ) = Right $ (,,) pf af $ Tmany (v, 0)
+    f pf af (Right (_, Builtin I64b)) = Right $ (,,) pf af $ Tconst I64
+    f pf af (Right (l, inst        )) = case inst of
         PType   tlit -> typetypelit pf af tlit
         Identifier _ -> err "identifier"
         _            -> err "generic"
       where
-        err s = Left $ "Typecheck.typetypelit: (" ++ s ++ ") instruction " ++
-            show inst ++ " is not suported yet"
+        err s = Left $ show l
+            ++ ": Typecheck.typetypelit: (" ++ s ++ ") instruction "
+            ++ show inst ++ " is not suported in Type Literals yet"
 
 typechunk :: ByteDict -> ASTDict -> String -> Maybe TypeSig ->
-    [Inst] -> Either String (ByteDict, ASTDict)
-typechunk prog ast str m_tp is =
+    Loc -> [Inst] -> Either String (ByteDict, ASTDict)
+typechunk prog ast str m_tp l is =
     assertWith (maybe True (const False) . find str)
-        (\a -> "Found two blocks with name `" ++ str ++ "`\n\t" ++ show a)
+        (\a -> show l
+            ++ ": Found two blocks with name `" ++ str ++ "`\n"
+            ++ "the other one was found here: "
+            ++ maybe (error "Typecheck.typechunck: unreachable")
+                (show . (\ (l2, _, _) -> l2)) (find str a)
+            ++ "\n\tHere is the rest of the parsed AST:\n" ++ show a)
         ast
-    >> do_typechunk prog ast str m_tp emptyChunk is
+    >> do_typechunk prog ast str m_tp emptyChunk l is
 
 do_typechunk :: ByteDict -> ASTDict -> String -> Maybe TypeSig ->
-    Chunk -> [Inst] -> Either String (ByteDict, ASTDict)
-do_typechunk prog ast str m_tp (Chunk stk by_is scp)  []    =
+    Chunk -> Loc -> [Inst] -> Either String (ByteDict, ASTDict)
+do_typechunk prog ast str m_tp (Chunk stk by_is scp) l  []    =
     case m_tp of
-        Just tp -> assert tp (\ typ ->
-                "The named-typed-block '" ++ str ++
-                "' expected type was `" ++
-                show tp ++ "` but actual type is `" ++
-                show typ ++ "`") stk
+        Just tp -> assert tp (\ typ -> show l
+                ++ ": The named-typed-block '" ++ str
+                ++ "' expected type was `" ++ show tp
+                ++ "` but actual type is `" ++ show typ
+                ++ "`") stk
             >> Right
             (insert str (Chunk stk (reverse by_is) scp) prog, ast)
         Nothing -> Right
             (insert str (Chunk stk (reverse by_is) scp) prog, ast)
-do_typechunk prog ast str m_tp (Chunk stk by_is scp) (i:is) =
+do_typechunk prog ast str m_tp (Chunk stk by_is scp) l (i:is) =
     case fromInst prog ast i of
-        Left  err -> Left $ "In " ++ str ++ ": " ++ err
+        Left  err -> Left $ show l ++ ": In " ++ str ++ ": " ++ err
         Right (typ, p, a, e_sp_by_i) -> case e_sp_by_i of
             Left  s       -> do_typechunk p a str m_tp
-                    (Chunk stk      by_is  (Bcode.cons s scp)) is
+                    (Chunk stk      by_is  (Bcode.cons s scp)) l is
             Right by_i -> case compose stk typ of
                 Right st  -> do_typechunk p a str m_tp
-                    (Chunk st (by_i:by_is)               scp ) is
+                    (Chunk st (by_i:by_is)               scp ) l is
                 Left  err ->
-                    Left $ "In " ++ str ++
+                    Left $ show l ++ ": In " ++ str ++
                     ": Instruction `" ++ show i ++ "`: " ++ err
 
 fromInst :: ByteDict -> ASTDict -> Inst
     -> Either String
         (TypeSig, ByteDict, ASTDict, Either (String, Chunk) ByteInst)
-fromInst p a i = let
+fromInst p a (l, i) = let
     i64 = Tconst I64
     help tp = return .
         (,,,) tp p a . Right in
     case i of
         Push x    -> help i64 $ Bcode.Push $ ST.I64 x
         Builtin b -> help (builtinTyp b) $ Bcode.Builtin $ fromBuiltin b
-        PQuote xs -> fromInst p a (Block Nothing Nothing xs)
+        PQuote xs -> fromInst p a (l, Block Nothing Nothing xs)
             >>= return . \ (typ, p', a', Right (Bcode.Chk by_is))
                 -> (Tfunc [] [typ], p', a',
                     Right $ Bcode.Push $ ST.Quote typ $ insts by_is)
@@ -143,7 +151,7 @@ fromInst p a i = let
                 -> (Tfunc [] [typ], p', a',
                     Right $ Bcode.Push $ ST.Type typ)
         Block m_name m_tlit xs -> do
-            (p', a1) <- typechunk p a "do-block" Nothing xs
+            (p', a1) <- typechunk p a "do-block" Nothing l xs
             (by_is, p1) <- case p' of
                 (("do-block", by_is):p1) -> return (by_is, p1)
                 (top                :_ ) -> error $
@@ -185,28 +193,30 @@ fromInst p a i = let
         Identifier ref -> case (find ref p, find ref a) of
             (Just chk, Nothing        ) ->
                 Right (typT chk, p, a, Right (Bcode.ChkCall ref))
-            (Nothing , Just (m_tl, xs)) ->
+            (Nothing , Just (l_i, m_tl, xs)) ->
                 assertWith ((==1) . length) (
-                    \ a' -> "Found " ++ show (length a') ++
-                    " blocks with name `" ++ ref ++ "`"
+                    \ a' -> error $
+                    "Typecheck.fromInst.Identifier: unreacheable: "
+                    ++ "Found " ++ show (length a')
+                    ++ " blocks with name `" ++ ref ++ "`"
                     ) (partPair ref a)
                 >>= \ (_, a')
                     -> maybe (Right (p, a', Nothing))
                     (\ tl ->
                         typetypelit p a' tl
                         >>= (\ (a1, a2, a3) -> Right (a1, a2, Just a3))) m_tl
-                >>= \ (p'', a'', m_tp) -> typechunk p'' a'' ref m_tp xs
+                >>= \ (p'', a'', m_tp) -> typechunk p'' a'' ref m_tp l_i xs
                 >>= return . \ (p3, a3)
                     -> case find ref p3 of
                         Just by_is ->
                             (typT by_is, p3, a3, Right (Bcode.ChkCall ref))
                         Nothing    -> error $
-                            "Typecheck.fromInst.Identifier:" ++
-                            "Could't find " ++ ref
+                            "Typecheck.fromInst.Identifier: "
+                            ++ "Could't find " ++ ref
             (Nothing , Nothing        ) ->
                 Left $ "Could not find `" ++ ref ++
                 "` as a reference.\n\tMaybe you have a ciclic calling?\n\t"
                 ++ "(They are not supported, yet)"
             (Just  _ , Just  _        ) ->
-                error $ "Typecheck.fromInst.Identifier:" ++
-                "Found 2 references of " ++ ref
+                error $ "Typecheck.fromInst.Identifier:"
+                ++ "Found 2 references of " ++ ref
