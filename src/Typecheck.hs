@@ -5,17 +5,16 @@ module Typecheck
 import Types (TypeSig(..), ConstT(..), compose)
 import IR.Token (Loc)
 import IR.AST as AST
-    (AST(..), Builtin(I64b), Inst, Instruction(..), AVar(..), TypeLit(..),
-    builtinTyp)
+    (AST(..), ASTDict
+    , Builtin(I64b), Inst(..), Instruction(..), AVar(..), TypeLit(..)
+    , builtinTyp)
 import IR.Bytecode as Bcode
-    (Bytecode(..), cons, Chunk(..), emptyChunk, ByteInst, fromBuiltin)
+    (Bytecode(..), ByteDict, cons
+    , Chunk(..), emptyChunk, ByteInst, fromBuiltin)
 import qualified IR.Bytecode as ST (StkTyp(..))
 import qualified IR.Bytecode as Bcode (ByteInst(..))
 import Utils (assert, assertWith, loop)
-import Dict (Dict, insert, find, partPair)
-
-type ASTDict  = Dict String (Loc, Maybe TypeLit, [Inst])
-type ByteDict  = Dict String Chunk
+import Dict (insert, find, partPair)
 
 typecheckIO :: AST -> IO (Bytecode, Bool)
 typecheckIO ast = do
@@ -53,21 +52,21 @@ typecheck ast = fst $ loop iter ([], [], AST.dict ast)
 iter :: ([String], ByteDict, ASTDict)
     -> Either () ([String], ByteDict, ASTDict)
 iter (   _,    _,  []          ) = Left ()
-iter (errs, prog, (str, (l, m_tl, is)):ast) = Right $
+iter (errs, prog, (str, (l, m_l_tl, is)):ast) = Right $
     let (errs', prog', ast', m_tp) = maybe (errs, prog, ast, Nothing) (
-            \ tlit -> case typetypelit prog ast tlit of
+            \ (tl, tlit) -> case typetypelit prog ast (tl, tlit) of
                 Left er          -> (er:errs, prog, ast, Nothing)
                 Right (p, a, tp) -> (   errs, p   , a  , Just tp)
             )
-            m_tl
+            m_l_tl
     in
     case typechunk prog ast str m_tp l is of
         Left  err    -> (err:errs', prog', ast')
         Right (p, a) -> (    errs', p    , a   )
 
-typetypelit :: ByteDict -> ASTDict -> TypeLit
+typetypelit :: ByteDict -> ASTDict -> (Loc, TypeLit)
     -> Either String (ByteDict, ASTDict, TypeSig)
-typetypelit p a (TypeLit i o) = do
+typetypelit p a (lt, TypeLit i o) = do
     (p1, a1, tin ) <- toTypeSigList p  a  i
     (p2, a2, tout) <- toTypeSigList p1 a1 o
     return (p2, a2, Tfunc tin tout)
@@ -81,11 +80,11 @@ typetypelit p a (TypeLit i o) = do
         ) $ Right (pt, at, [])
     f :: ByteDict -> ASTDict -> Either AVar Inst
         -> Either String (ByteDict, ASTDict, TypeSig)
-    f pf af (Left  (Avar  v)        ) = Right $ (,,) pf af $ Tvar   v
-    f pf af (Left  (Amany v)        ) = Right $ (,,) pf af $ Tmany (v, 0)
-    f pf af (Right (_, Builtin I64b)) = Right $ (,,) pf af $ Tconst I64
-    f pf af (Right (l, inst        )) = case inst of
-        PType   tlit -> typetypelit pf af tlit
+    f pf af (Left  (Avar  v)              ) = Right $ (,,) pf af $ Tvar   v
+    f pf af (Left  (Amany v)              ) = Right $ (,,) pf af $ Tmany (v, 0)
+    f pf af (Right (Inst _ (Builtin I64b))) = Right $ (,,) pf af $ Tconst I64
+    f pf af (Right (Inst l  inst         )) = case inst of
+        PType   tlit -> typetypelit pf af (lt, tlit)
         Identifier _ -> err "identifier"
         _            -> err "generic"
       where
@@ -135,22 +134,22 @@ do_typechunk prog ast str m_tp (Chunk stk by_is scp) l (i:is) =
 fromInst :: ByteDict -> ASTDict -> Inst
     -> Either String
         (TypeSig, ByteDict, ASTDict, Either (String, Chunk) ByteInst)
-fromInst p a (l, i) = let
+fromInst p a (Inst l i) = let
     i64 = Tconst I64
     help tp = return .
         (,,,) tp p a . Right in
     case i of
         Push x    -> help i64 $ Bcode.Push $ ST.I64 x
         Builtin b -> help (builtinTyp b) $ Bcode.Builtin $ fromBuiltin b
-        PQuote xs -> fromInst p a (l, Block Nothing Nothing xs)
+        PQuote xs -> fromInst p a (Inst l (Block Nothing Nothing xs))
             >>= return . \ (typ, p', a', Right (Bcode.Chk by_is))
                 -> (Tfunc [] [typ], p', a',
                     Right $ Bcode.Push $ ST.Quote typ $ insts by_is)
-        PType tlit -> typetypelit p a tlit
+        PType tlit -> typetypelit p a (l, tlit)
             >>= return . \ (p', a', typ)
                 -> (Tfunc [] [typ], p', a',
                     Right $ Bcode.Push $ ST.Type typ)
-        Block m_name m_tlit xs -> do
+        Block m_l_name m_l_tlit xs -> do
             (p', a1) <- typechunk p a "do-block" Nothing l xs
             (by_is, p1) <- case p' of
                 (("do-block", by_is):p1) -> return (by_is, p1)
@@ -161,16 +160,16 @@ fromInst p a (l, i) = let
                     "Typecheck.fromInst.Block: unreacheable: " ++
                     "the program is empty"
             (p2, a2, typ) <- maybe (Right (p1, a1, typT by_is)) id $
-                    typetypelit p a <$> m_tlit
+                    typetypelit p a <$> m_l_tlit
             _ <- assert typ (\ tp ->
-                    "The typed-" ++ maybe "do-" (const "") m_name
-                    ++ "block `" ++ show (Block m_name m_tlit xs)
+                    "The typed-" ++ maybe "do-" (const "") m_l_name
+                    ++ "block `" ++ show (Block m_l_name m_l_tlit xs)
                     ++ "` expected type was `"    ++ show typ
                     ++ "`, but actual type is `"  ++ show tp ++ "`")
                 $ typT by_is
             return $ maybe (typT by_is , p2, a2, Right $ Bcode.Chk by_is)
                 (\ name -> (Tfunc [] [], p2, a2, Left  $ (,) name  by_is))
-                m_name
+                (fmap snd m_l_name)
         -- Doblk  xs -> typechunk p a "do-block" Nothing xs
         --     >>= return . \ (("do-block",by_is):p', a')
         --         -> (typT by_is, p', a', Right $ Bcode.Chk by_is)

@@ -1,5 +1,6 @@
 module IR.Bytecode
     ( Bytecode(..)
+    , ByteDict
     , Chunk(..)
     , StkTyp(..)
     , Builtin(..)
@@ -14,8 +15,10 @@ import qualified IR.AST as AST (Builtin(..))
 import Dict (Dict)
 import qualified Dict as D (insert, emptyDict)
 
+type ByteDict  = Dict String Chunk
+
 newtype Bytecode = Bytecode
-    { dict :: Dict String Chunk
+    { dict :: ByteDict
     } deriving Eq
 
 instance Show Bytecode where

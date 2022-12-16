@@ -6,7 +6,7 @@ module Main
 import Parsing.Lexer (tokenize)
 import Parsing.Parser (parse)
 import IR.Token (emptyLoc)
-import IR.AST (Inst, Instruction(..), Builtin(..), AST(..))
+import IR.AST (Inst(..), Instruction(..), Builtin(..), AST(..))
 import IR.Bytecode (Bytecode(Bytecode), Chunk(..), emptyChunk)
 import Typecheck (typecheckIO, typecheck)
 import Simulation (simulateIO)
@@ -49,7 +49,7 @@ iprog = [
     ]
 
 toI :: (a -> Instruction) -> a -> Inst
-toI f x = (emptyLoc, f x)
+toI f x = Inst emptyLoc $ f x
 
 bprog :: Dict String Chunk
 bprog = (\ (_, b, _) -> b) $ typecheck

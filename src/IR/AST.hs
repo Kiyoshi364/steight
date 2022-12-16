@@ -1,9 +1,9 @@
 module IR.AST
-    ( AST(..)
+    ( AST(..), ASTDict
     , Builtin(..)
     , AVar(..)
     , TypeLit(..)
-    , Inst
+    , Inst(..)
     , Instruction(..)
     , emptyAST, cons
     , ipp
@@ -15,8 +15,9 @@ import Types.TypeDef (TypeSig(..), ConstT(..))
 import Dict (Dict)
 import qualified Dict as D (emptyDict, insert)
 
+type ASTDict  = Dict String (Loc, Maybe (Loc, TypeLit), [Inst])
 data AST = AST
-    { dict :: Dict String (Loc, Maybe TypeLit, [Inst])
+    { dict :: ASTDict
     }
 
 instance Show AST where show (AST ds) = "AST " ++ show ds
@@ -24,7 +25,7 @@ instance Show AST where show (AST ds) = "AST " ++ show ds
 emptyAST :: AST
 emptyAST = AST D.emptyDict
 
-cons :: String -> (Loc, Maybe TypeLit, [Inst]) -> AST -> AST
+cons :: String -> (Loc, Maybe (Loc, TypeLit), [Inst]) -> AST -> AST
 cons k v (AST d) = AST $ D.insert k v d
 
 ipp :: Show a => [a] -> String
@@ -77,7 +78,7 @@ data Instruction
     | Builtin Builtin
     | PQuote [Inst]
     | PType TypeLit
-    | Block (Maybe String) (Maybe TypeLit) [Inst]
+    | Block (Maybe (Loc, String)) (Maybe (Loc, TypeLit)) [Inst]
     | Identifier String
     deriving Eq
 
@@ -92,7 +93,13 @@ instance Show Instruction where
         ipp is ++ "end"
     show (Identifier ref) = "{" ++ ref ++ "}"
 
-type Inst = (,) Loc Instruction
+data Inst = Inst
+    { iloc  :: Loc
+    , instr ::Instruction
+    } deriving Eq
+
+instance Show Inst where
+    show (Inst l i) = "(" ++ show l ++ "," ++ show i ++ ")"
 
 i64 :: TypeSig
 i64 = Tconst I64
