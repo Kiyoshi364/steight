@@ -6,7 +6,8 @@ module Main
 import Parsing.Lexer (tokenize)
 import Parsing.Parser (parse)
 import IR.Token (emptyLoc)
-import IR.AST (Inst(..), Instruction(..), Builtin(..), AST(..))
+import IR.AST (AST(..), ASTEntry(ASTBlock)
+    , Inst(..), Instruction(..), Builtin(..))
 import IR.Bytecode (Bytecode(Bytecode), Chunk(..), emptyChunk)
 import Typecheck (typecheckIO, typecheck)
 import Simulation (simulateIO)
@@ -31,7 +32,7 @@ main = do
     prog <- case parsed of
         Left  errs -> putStrLn (foldMap
             (\ (loc, err) -> "\n" ++ show loc ++ ": " ++ err) errs)
-            >> return (AST [("main", (emptyLoc, Nothing, []))])
+            >> return (AST [("main", ASTBlock emptyLoc Nothing [])])
         Right  r   -> return r
     putStrLn $ show prog
     putStrLn ""
@@ -53,7 +54,7 @@ toI f x = Inst emptyLoc $ f x
 
 bprog :: Dict String Chunk
 bprog = (\ (_, b, _) -> b) $ typecheck
-    $ AST [("main", (emptyLoc, Nothing, iprog))]
+    $ AST [("main", ASTBlock emptyLoc Nothing iprog)]
 
 tprog :: Bytecode
 tprog = Bytecode bprog

@@ -67,7 +67,7 @@ data Tkn
     | TkOpenBrack | TkCloseBrack
     | TkOpenCurly | TkCloseCurly
     -- Keywords
-    | TkDo | TkBlock | TkType | TkEnd | TkDash
+    | TkDo | TkBlock | TkType | TkCase | TkEnd | TkDash
     -- Builtins
     | TkAdd | TkSub | TkSwap | TkRot | TkDup
     | TkDrop | TkPrint | TkApply | TkHalt | TkI64b
@@ -89,6 +89,7 @@ instance Show Tkn where
     show TkDo          = "Key do"
     show TkBlock       = "Key block"
     show TkType        = "Key type"
+    show TkCase        = "Key case"
     show TkEnd         = "Key end"
     show TkDash        = "Key --"
     show TkAdd         = "Key +"
@@ -115,6 +116,7 @@ instance Match Tkn where
     match TkDo          TkDo          = True
     match TkBlock       TkBlock       = True
     match TkType        TkType        = True
+    match TkCase        TkCase        = True
     match TkEnd         TkEnd         = True
     match TkDash        TkDash        = True
     match TkAdd         TkAdd         = True

@@ -5,8 +5,9 @@ module Typecheck
 import Types (TypeSig(..), ConstT(..), compose)
 import IR.Token (Loc)
 import IR.AST as AST
-    (AST(..), ASTDict
+    (AST(..), ASTEntry(..), ASTDict
     , Builtin(I64b), Inst(..), Instruction(..), AVar(..), TypeLit(..)
+    , astEntryLoc
     , builtinTyp)
 import IR.Bytecode as Bcode
     (Bytecode(..), ByteDict, cons
@@ -52,17 +53,20 @@ typecheck ast = fst $ loop iter ([], [], AST.dict ast)
 iter :: ([String], ByteDict, ASTDict)
     -> Either () ([String], ByteDict, ASTDict)
 iter (   _,    _,  []          ) = Left ()
-iter (errs, prog, (str, (l, m_l_tl, is)):ast) = Right $
+iter (errs, prog, (str, (ASTBlock l m_l_tl is)):ast) = Right $
     let (errs', prog', ast', m_tp) = maybe (errs, prog, ast, Nothing) (
             \ (tl, tlit) -> case typetypelit prog ast (tl, tlit) of
                 Left er          -> (er:errs, prog, ast, Nothing)
                 Right (p, a, tp) -> (   errs, p   , a  , Just tp)
             )
             m_l_tl
-    in
-    case typechunk prog ast str m_tp l is of
+    in case typechunk prog ast str m_tp l is of
         Left  err    -> (err:errs', prog', ast')
         Right (p, a) -> (    errs', p    , a   )
+iter (errs, prog, (str, (ASTTypeDecl l l_tl cs)):ast) = Right $
+    error (
+        "NOT IMPLEMENTED: Typecheck.iter.ASTTypeDecl"
+    ) errs prog str l l_tl cs ast
 
 typetypelit :: ByteDict -> ASTDict -> (Loc, TypeLit)
     -> Either String (ByteDict, ASTDict, TypeSig)
@@ -100,7 +104,7 @@ typechunk prog ast str m_tp l is =
             ++ ": Found two blocks with name `" ++ str ++ "`\n"
             ++ "the other one was found here: "
             ++ maybe (error "Typecheck.typechunck: unreachable")
-                (show . (\ (l2, _, _) -> l2)) (find str a)
+                (show . astEntryLoc) (find str a)
             ++ "\n\tHere is the rest of the parsed AST:\n" ++ show a)
         ast
     >> do_typechunk prog ast str m_tp emptyChunk l is
@@ -189,13 +193,17 @@ fromInst p a (Inst l i) = let
         --     >>= return . \ (_typ, p', a', Right (Bcode.Chk chk))
         --         -> (Tfunc [] [], p', a', Left (name, chk))
 
+        TypeDecl name typ cs -> error $
+            "Typecheck.fromInst.TypeDecl: not implemented: "
+            ++ "name: " ++ show name ++ "; typ: " ++ show typ
+            ++ "; cases: " ++ show cs
         Identifier ref -> case (find ref p, find ref a) of
             (Just chk, Nothing        ) ->
                 Right (typT chk, p, a, Right (Bcode.ChkCall ref))
-            (Nothing , Just (l_i, m_tl, xs)) ->
+            (Nothing , Just (ASTBlock l_i m_l_tl xs)) ->
                 assertWith ((==1) . length) (
                     \ a' -> error $
-                    "Typecheck.fromInst.Identifier: unreacheable: "
+                    "Typecheck.fromInst.IdentifierASTBlock: unreacheable: "
                     ++ "Found " ++ show (length a')
                     ++ " blocks with name `" ++ ref ++ "`"
                     ) (partPair ref a)
@@ -203,19 +211,23 @@ fromInst p a (Inst l i) = let
                     -> maybe (Right (p, a', Nothing))
                     (\ tl ->
                         typetypelit p a' tl
-                        >>= (\ (a1, a2, a3) -> Right (a1, a2, Just a3))) m_tl
+                        >>= (\ (a1, a2, a3) -> Right (a1, a2, Just a3))) m_l_tl
                 >>= \ (p'', a'', m_tp) -> typechunk p'' a'' ref m_tp l_i xs
                 >>= return . \ (p3, a3)
                     -> case find ref p3 of
                         Just by_is ->
                             (typT by_is, p3, a3, Right (Bcode.ChkCall ref))
                         Nothing    -> error $
-                            "Typecheck.fromInst.Identifier: "
+                            "Typecheck.fromInst.Identifier.ASTBlock: "
                             ++ "Could't find " ++ ref
+            (Nothing , Just (ASTTypeDecl l_i l_tl xs)) ->
+                error (
+                    "NOT IMPLEMENTED: Typecheck.fromInst.Identifier.ASTTypeDecl"
+                ) l_i l_tl xs
             (Nothing , Nothing        ) ->
                 Left $ "Could not find `" ++ ref ++
                 "` as a reference.\n\tMaybe you have a ciclic calling?\n\t"
                 ++ "(They are not supported, yet)"
             (Just  _ , Just  _        ) ->
-                error $ "Typecheck.fromInst.Identifier:"
-                ++ "Found 2 references of " ++ ref
+                error $ "Typecheck.fromInst.Identifier.Both_Just:"
+                ++ " Found 2 references of " ++ ref

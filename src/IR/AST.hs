@@ -1,11 +1,13 @@
 module IR.AST
-    ( AST(..), ASTDict
+    ( AST(..)
+    , ASTEntry(..), ASTDict
     , Builtin(..)
     , AVar(..)
     , TypeLit(..)
+    , CaseDecl(..)
     , Inst(..)
     , Instruction(..)
-    , emptyAST, cons
+    , emptyAST, cons, astEntryLoc
     , ipp
     , builtinTyp
     ) where
@@ -15,7 +17,13 @@ import Types.TypeDef (TypeSig(..), ConstT(..))
 import Dict (Dict)
 import qualified Dict as D (emptyDict, insert)
 
-type ASTDict  = Dict String (Loc, Maybe (Loc, TypeLit), [Inst])
+data ASTEntry
+    = ASTBlock Loc (Maybe (Loc, TypeLit)) [Inst]
+    | ASTTypeDecl Loc (Loc, TypeLit) [(Loc, CaseDecl)]
+    deriving (Eq, Show)
+
+type ASTDict  = Dict String ASTEntry
+
 data AST = AST
     { dict :: ASTDict
     }
@@ -25,8 +33,12 @@ instance Show AST where show (AST ds) = "AST " ++ show ds
 emptyAST :: AST
 emptyAST = AST D.emptyDict
 
-cons :: String -> (Loc, Maybe (Loc, TypeLit), [Inst]) -> AST -> AST
+cons :: String -> ASTEntry -> AST -> AST
 cons k v (AST d) = AST $ D.insert k v d
+
+astEntryLoc :: ASTEntry -> Loc
+astEntryLoc (ASTBlock    l _ _) = l
+astEntryLoc (ASTTypeDecl l _ _) = l
 
 ipp :: Show a => [a] -> String
 ipp = foldr (\ i s -> show i ++ " " ++ s) ""
@@ -73,12 +85,19 @@ revcatTL = foldr (\t s -> s ++ f t ++ " ") ""
     f :: Either AVar Inst -> String
     f = either show show
 
+data CaseDecl = CaseDecl (Loc, String) (Loc, TypeLit)
+    deriving Eq
+
+instance Show CaseDecl where
+    show (CaseDecl l_name l_typ) = "case " ++ show l_name ++ " " ++ show l_typ
+
 data Instruction
     = Push Int
     | Builtin Builtin
     | PQuote [Inst]
     | PType TypeLit
     | Block (Maybe (Loc, String)) (Maybe (Loc, TypeLit)) [Inst]
+    | TypeDecl (Loc, String) (Loc, TypeLit) [(Loc, CaseDecl)]
     | Identifier String
     deriving Eq
 
@@ -91,6 +110,8 @@ instance Show Instruction where
         maybe "do" (("block "++) . show) m_name ++
         maybe " " (\ t -> " <" ++ show t ++ "> ") m_typ ++
         ipp is ++ "end"
+    show (TypeDecl l_name l_typ cs) = "type " ++ show l_name ++
+        " " ++ show l_typ ++ " " ++ ipp cs
     show (Identifier ref) = "{" ++ ref ++ "}"
 
 data Inst = Inst

@@ -219,6 +219,7 @@ keywords =
     [ (TkDo, "do")
     , (TkBlock, "block")
     , (TkType, "type")
+    , (TkCase, "case")
     , (TkEnd, "end")
     , (TkDash, "--")
     , (TkAdd, "+")

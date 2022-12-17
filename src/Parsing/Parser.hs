@@ -4,14 +4,15 @@ module Parsing.Parser
 
 import IR.Token (Name(..), Tkn(..), Loc, Token(..)
     , fromName, emptyLoc, ppTokens)
-import IR.AST (AST(..), Builtin(..), AVar(..), TypeLit(..)
-    , Inst(..), Instruction(..), cons, emptyAST)
+import IR.AST (AST(..), ASTEntry(..)
+    , Builtin(..), AVar(..) , TypeLit(..)
+    , CaseDecl(..), Inst(..), Instruction(..), cons, emptyAST)
 import Parsing.Lexer (parseNum)
 import Parsing.ParserLib
     ( ParserLib(..), (<|>) , failWithErrP
     , matchP, matchAnyP, optP, zeroOrMoreP, oneOrMoreP
     )
-import Utils ((\\) , (|$>) , fork, onFst, onSnd, asList)
+import Utils ((\\) , (|$>) , fork, onSnd, asList)
 
 type Error = [] (Loc, String)
 type Parser = ParserLib Error [] Token
@@ -32,10 +33,15 @@ parser :: Parser AST
 parser = oneOrMoreP (
         topLvlP
         |$> (\ (Inst l inst) -> case inst of
-            Block (Just s) m_l_typ is -> (s, (l, m_l_typ, is))
-            _ -> error "Parsing.parser: non-exhaustive pattern")
+            -- Note: here the name location is dropped
+            -- don't know where to use it
+            Block (Just (_, n)) m_l_typ is
+                -> (n, (ASTBlock    l m_l_typ is))
+            TypeDecl    (_, n)    l_typ cs
+                -> (n, (ASTTypeDecl l   l_typ cs))
+            _ -> error $ "Parsing.parser: non-exhaustive pattern: " ++ show inst)
         ) <* zeroOrMoreP commentP <* match TkEOF
-        |$> asList \\ fmap (onFst snd) \\ foldr (uncurry cons) emptyAST
+        |$> asList \\ foldr (uncurry cons) emptyAST
 
 tk :: Tkn -> Token
 tk = Tk emptyLoc
@@ -70,7 +76,7 @@ instP = zeroOrMoreP commentP *>
     <|> errP)
 
 topLvlP :: Parser Inst
-topLvlP = zeroOrMoreP commentP *> (nameblkP <|> errP)
+topLvlP = zeroOrMoreP commentP *> (nameblkP <|> typedeclP <|> errP)
 
 pushIntP :: Parser Inst
 pushIntP = match (TkName $ NNumber "")
@@ -128,6 +134,21 @@ nameblkP = Inst . loc
         <$> fmap Just newIdP
         <*> optP typeLitP
         <*> instructionendp instP TkEnd)
+
+typedeclP :: Parser Inst
+typedeclP = Inst . loc
+    <$> match TkType
+    <*> (TypeDecl
+        <$> newIdP
+        <*> typeLitP
+        <*> instructionendp casesP TkEnd)
+
+casesP :: Parser (Loc, CaseDecl)
+casesP = (,) . loc
+    <$> match TkCase
+    <*> (CaseDecl
+        <$> newIdP
+        <*> typeLitP)
 
 instructionseqp :: Parser a -> Tkn -> Tkn -> Parser [a]
 instructionseqp p start end = match start *> instructionendp p end
