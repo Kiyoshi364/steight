@@ -152,7 +152,7 @@ commentP = fmap (fork (,) loc $ getString . tkn) $ match $ TkComment ""
 
 errP :: Parser a
 errP = failWithErrP $ \ mt -> case mt of
-    Just (Tk l tn) -> (:[]) $ (,) l $ "Unexpected token found:" ++ show tn
+    Just (Tk l tn) -> (:[]) $ (,) l $ "Unexpected token found: " ++ show tn
     Nothing        -> error "Parsing.Parser.errP: found end of tokens"
 
 typeLitP :: Parser (Loc, TypeLit)
