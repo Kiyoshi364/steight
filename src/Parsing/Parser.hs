@@ -49,6 +49,7 @@ tk = Tk emptyLoc
 match :: Tkn -> Parser Token
 match = matchP . tk
 
+-- Note: maybe it should return a Name
 matchAnyName :: [Name] -> Parser (Loc, String)
 matchAnyName = fmap (TkName \\ tk)
     \\ matchAnyP
