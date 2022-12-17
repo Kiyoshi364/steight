@@ -3,7 +3,8 @@ module Simulation
     ) where
 
 import IR.Bytecode
-    (Bytecode(..), Chunk(..), StkTyp(..), Builtin(..), ByteInst(..))
+    (Bytecode(..), ByteEntry(..)
+    , Chunk(..), StkTyp(..), Builtin(..), ByteInst(..))
 import Utils (fork, loop)
 import Dict (find)
 
@@ -15,7 +16,8 @@ data State a = State
     } deriving Show
 
 begin :: Bytecode -> State a
-begin = fork (State [] []) id $ maybe [] insts . find "main" . dict
+begin = fork (State [] []) id $
+    maybe [] (\ (ByteChunk c) -> insts c ) . find "main" . dict
 
 simulateIO :: Bytecode -> IO (State StkTyp)
 simulateIO scp = do
@@ -70,11 +72,14 @@ step s@(State st ot p (i:is)) =
             s2 = fst $ simulate s{ code = iis }
             in Right $ s2{ code = is }
         ChkCall r -> case find r $ dict p of
-            Nothing  -> Left $ Left $ "Could not find block `"
-                ++ r ++ "`"
-            Just chk -> let
+            Nothing                 -> Left $ Left $
+                "Could not find block `" ++ r ++ "`"
+            Just (ByteChunk chk   ) -> let
                 iis = insts chk
                 (s2, err_hlt) = loop step s{ code = iis }
                 in case err_hlt of
                     Left err -> Left $ Left err
                     Right () -> Right $ s2{ code = is }
+            Just (ByteTypeDecl typ) -> error (
+                    "NOT IMPLEMENTED: Simulation.step"
+                ) typ

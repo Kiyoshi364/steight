@@ -1,6 +1,6 @@
 module IR.Bytecode
     ( Bytecode(..)
-    , ByteDict
+    , ByteEntry(..), ByteDict
     , Chunk(..)
     , StkTyp(..)
     , Builtin(..)
@@ -10,12 +10,18 @@ module IR.Bytecode
     ) where
 
 import Types (TypeSig(..))
+import IR.Token (Loc, emptyLoc)
 import IR.AST (ipp)
 import qualified IR.AST as AST (Builtin(..))
 import Dict (Dict)
 import qualified Dict as D (insert, emptyDict)
 
-type ByteDict  = Dict String Chunk
+data ByteEntry
+    = ByteChunk Chunk
+    | ByteTypeDecl TypeSig
+    deriving (Eq, Show)
+
+type ByteDict  = Dict String ByteEntry
 
 newtype Bytecode = Bytecode
     { dict :: ByteDict
@@ -27,25 +33,25 @@ instance Show Bytecode where
 emptyBytecode :: Bytecode
 emptyBytecode = Bytecode D.emptyDict
 
-cons :: (String, Chunk) -> Bytecode -> Bytecode
+cons :: (String, ByteEntry) -> Bytecode -> Bytecode
 cons a (Bytecode as) = Bytecode $ uncurry D.insert a as
 
 data Chunk = Chunk
-    { typT  :: TypeSig
+    { bloc  :: Loc
+    , typT  :: TypeSig
     , insts :: [ByteInst]
     , scope :: Bytecode
-    }
-    deriving Eq
+    } deriving Eq
 
 instance Show Chunk where
-    show (Chunk  _  [] scp) = "scope " ++ show scp
-    show (Chunk typ is (Bytecode [])) =
-        "do " ++ show typ ++ " " ++ ipp is ++ "end"
-    show (Chunk typ is scp) = "scope " ++ show scp ++
+    show (Chunk l _   [] scp) = show l ++ ": scope " ++ show scp
+    show (Chunk l typ is (Bytecode [])) =
+        show l ++ ": do " ++ show typ ++ " " ++ ipp is ++ "end"
+    show (Chunk l typ is scp) = show l ++ ": scope " ++ show scp ++
         " do " ++ show typ ++ " " ++ ipp is ++ "end"
 
 emptyChunk :: Chunk
-emptyChunk = Chunk (Tfunc [] []) [] $ emptyBytecode
+emptyChunk = Chunk emptyLoc (Tfunc [] []) [] $ emptyBytecode
 
 data StkTyp
     = I64 Int

@@ -8,7 +8,7 @@ import Parsing.Parser (parse)
 import IR.Token (emptyLoc)
 import IR.AST (AST(..), ASTEntry(ASTBlock)
     , Inst(..), Instruction(..), Builtin(..))
-import IR.Bytecode (Bytecode(Bytecode), Chunk(..), emptyChunk)
+import IR.Bytecode (Bytecode(Bytecode), ByteEntry(..), emptyChunk)
 import Typecheck (typecheckIO, typecheck)
 import Simulation (simulateIO)
 import Dict (Dict)
@@ -39,7 +39,7 @@ main = do
     (p', ok) <- typecheckIO prog
     putStrLn $ show p'
     _ <- if ok then putStrLn "\n=== simulation ===" >> simulateIO p'
-          else simulateIO $ Bytecode [("main", emptyChunk)]
+          else simulateIO $ Bytecode [("main", ByteChunk emptyChunk)]
     return ()
 
 iprog :: [Inst]
@@ -52,7 +52,7 @@ iprog = [
 toI :: (a -> Instruction) -> a -> Inst
 toI f x = Inst emptyLoc $ f x
 
-bprog :: Dict String Chunk
+bprog :: Dict String ByteEntry
 bprog = (\ (_, b, _) -> b) $ typecheck
     $ AST [("main", ASTBlock emptyLoc Nothing iprog)]
 
