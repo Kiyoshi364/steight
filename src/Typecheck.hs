@@ -69,7 +69,7 @@ iter (errs, prog, (str, (ASTBlock l m_l_tl is)):ast) = Right $
                 Right (p, a, tp) -> (   errs, p   , a  , Just tp)
             )
             m_l_tl
-    in case typechunk prog ast str m_tp l is of
+    in case typechunk prog' ast' str m_tp l is of
         Left  err    -> (err:errs', prog', ast')
         Right (p, a) -> (    errs', p    , a   )
 iter (errs, prog, (str, (ASTTypeDecl l l_tl cs)):ast) = Right $
@@ -108,14 +108,7 @@ typetypelit p a (lt, TypeLit i o) = do
 typechunk :: ByteDict -> ASTDict -> String -> Maybe TypeSig ->
     Loc -> [Inst] -> Either String (ByteDict, ASTDict)
 typechunk prog ast str m_tp l is =
-    assertWith (maybe True (const False) . find str)
-        (\a -> show l
-            ++ ": Found two blocks with name `" ++ str ++ "`\n"
-            ++ "the other one was found here: "
-            ++ maybe (error "Typecheck.typechunck: unreachable")
-                (show . astEntryLoc) (find str a)
-            ++ "\n\tHere is the rest of the parsed AST:\n" ++ show a)
-        ast
+    checkDuplicatedName ast str l
     >> do_typechunk prog ast str m_tp emptyChunk{ bloc = l } is
 
 do_typechunk :: ByteDict -> ASTDict -> String -> Maybe TypeSig ->
@@ -143,6 +136,18 @@ do_typechunk prog ast str m_tp (Chunk l stk by_is scp) (i:is) =
                 Left  err ->
                     Left $ show l ++ ": In " ++ str ++
                     ": Instruction `" ++ show i ++ "`: " ++ err
+
+checkDuplicatedName :: ASTDict -> String -> Loc -> Either String ()
+checkDuplicatedName ast str l =
+    assertWith (maybe True (const False) . find str)
+        (\a -> show l
+            ++ ": Found two blocks with name `" ++ str ++ "`\n"
+            ++ "the other one was found here: "
+            ++ maybe (error "Typecheck.typechunck: unreachable")
+                (show . astEntryLoc) (find str a)
+            ++ "\n\tHere is the rest of the parsed AST:\n" ++ show a)
+        ast
+    >> return ()
 
 fromInst :: ByteDict -> ASTDict -> Inst
     -> Either String
