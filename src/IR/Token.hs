@@ -4,7 +4,8 @@ module IR.Token
     , Loc(..)
     , Token(..)
     , fromName
-    , emptyLoc, adv
+    , emptyLoc, skp, adv, exd, exds, finish
+    , canLocMerge, locMerge, assertLocMerge
     , ppTokens
     ) where
 
@@ -134,30 +135,88 @@ instance Match Tkn where
     match TkEOF         TkEOF         = True
     match _ _ = False
 
-data Loc = Loc
+data TextPos = TextPos
     { getLine :: Int
     , getCol  :: Int
     }
 
+instance Show TextPos where
+    show p = show (getLine p) ++ "." ++ show (getCol p)
+
+instance Eq TextPos where
+    (TextPos l1 c1) == (TextPos l2 c2) =
+        l1 == l2 && c1 == c2
+
+instance Ord TextPos where
+    compare (TextPos l1 c1) (TextPos l2 c2) =
+        case compare l1 l2 of
+            LT -> LT
+            GT -> GT
+            EQ -> compare c1 c2
+
+emptyTextPos :: TextPos
+emptyTextPos = TextPos 1 1
+
+advTextPos :: TextPos -> Char -> TextPos
+advTextPos (TextPos line col) c
+    | c == '\n' = TextPos (line + 1)  1
+    | otherwise = TextPos  line      (col + 1)
+
+{- First Location should have skip == (1, 1)
+ - this.skip should always be equal to prev.end
+ - two Locations are "mergeable" if fst.end == snd.skip
+ - the token is between start (inclusive) and end (inclusive)
+ -}
+data Loc = Loc
+    { getSkip  :: TextPos
+    , getStart :: TextPos
+    , getEnd   :: TextPos
+    }
+
 instance Show Loc where
-    show l = show (getLine l) ++ "." ++ show (getCol l)
+    show l = "(" ++ show (getSkip l) ++ ")"
+        ++ show (getStart l) ++ "~" ++ show (getEnd l)
 
 instance Eq Loc where
-    (Loc l1 c1) == (Loc l2 c2) = l1 == l2 && c1 == c2
-
-instance Ord Loc where
-    compare (Loc l1 c1) (Loc l2 c2) = case compare l1 l2 of
-        LT -> LT
-        GT -> GT
-        EQ -> compare c1 c2
+    (Loc sk1 st1 e1) == (Loc sk2 st2 e2) =
+        sk1 == sk2 && st1 == st2 && e1 == e2
 
 emptyLoc :: Loc
-emptyLoc = Loc 1 1
+emptyLoc = Loc emptyTextPos emptyTextPos emptyTextPos
+
+skp :: Loc -> Char -> Loc
+skp (Loc sk _ e) c =
+    let newEnd = advTextPos e c
+    in Loc sk newEnd newEnd
 
 adv :: Loc -> Char -> Loc
-adv (Loc line col) c
-    | c == '\n' = Loc (line + 1) 1
-    | otherwise = Loc  line      (col + 1)
+adv (Loc _ _ e) c =
+    let newEnd = advTextPos e c
+    in Loc e newEnd newEnd
+
+exd :: Loc -> Char -> Loc
+exd (Loc sk st e) c = Loc sk st (advTextPos e c)
+
+exds :: Loc -> [Char] -> Loc
+exds = foldl exd
+
+finish :: Loc -> Loc
+finish (Loc _ _ e) = Loc e e e
+
+canLocMerge :: Loc -> Loc -> Bool
+canLocMerge (Loc _ _ e1) (Loc sk2 _ _) = e1 == sk2
+
+locMerge :: Loc -> Loc -> Maybe Loc
+locMerge l1@(Loc sk1 st1 _) l2@(Loc _ _ e2)
+    | canLocMerge l1 l2 = Just $ Loc sk1 st1 e2
+    | otherwise         = Nothing
+
+assertLocMerge :: Loc -> Loc -> Loc
+assertLocMerge l1 l2 = maybe (
+        error $ "assertLocMerge: "
+            ++ "(" ++ show (getSkip l1) ++ ")" ++ show l1
+            ++ " (" ++ show (getSkip l2) ++ ")" ++ show l2
+    ) id $ locMerge l1 l2
 
 data Token = Tk
     { loc :: Loc

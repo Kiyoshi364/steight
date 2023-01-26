@@ -3,7 +3,8 @@ module Parsing.Lexer
     , parseNum
     ) where
 
-import IR.Token (Name(..), Tkn(..), Loc, Token(..), emptyLoc, adv)
+import IR.Token (Name(..), Tkn(..), Loc, Token(..)
+    , emptyLoc, skp, adv, exd, exds, finish)
 import Data.Bool (bool)
 import Utils (fork)
 
@@ -14,25 +15,25 @@ do_tokenize :: Loc -> String -> [Token]
 do_tokenize l  []    = Tk l TkEOF : []
 do_tokenize l (c:cs)
     | isPar c   = Tk l (parToken c) : do_tokenize (adv l c) cs
-    | isWhite c =                     do_tokenize (adv l c) cs
-    | c == '"'  = string l (adv l c) [] cs
-    | isComment (c:cs) = comment l (adv l c) [] (tail cs)
-    | otherwise = scan l (adv l c) [c] cs
+    | isWhite c =                     do_tokenize (skp l c) cs
+    | c == '"'  = string (exd l c) [] cs
+    | isComment (c:cs) = comment (exds l [c, head cs]) [] (tail cs)
+    | otherwise = scan l [c] cs
 
-string :: Loc -> Loc -> String -> String -> [Token]
-string _    _ _  []    = error
+string :: Loc -> String -> String -> [Token]
+string _ _  []    = error
     "Parsing.Lexer.string: TODO: handle unclosed string literals"
-string sloc l s (c:cs)
-    | c == '"'  = Tk sloc (tkstring $ reverse s) : do_tokenize (adv l c) cs
-    | c == '\\' = escape sloc l s cs
-    | otherwise = string sloc (adv l c) (c:s) cs
+string l s (c:cs)
+    | c == '"'  = Tk l (tkstring $ reverse s) : do_tokenize (adv l c) cs
+    | c == '\\' = escape (exd l c) s cs
+    | otherwise = string (exd l c) (c:s) cs
   where
     tkstring = TkName . NString
 
-escape :: Loc -> Loc -> String -> String -> [Token]
-escape _    _ _  []    = error
-    "Parsing.Lexer.escape: handle error: empty backslash"
-escape sloc l s (c:cs)
+escape :: Loc -> String -> String -> [Token]
+escape _ _  []    = error
+    "Parsing.Lexer.escape: TODO: handle error: empty backslash"
+escape l s (c:cs)
     | c == 't'  = escapeOk '\t' cs
     | c == 'r'  = escapeOk '\r' cs
     | c == 'n'  = escapeOk '\n' cs
@@ -43,26 +44,27 @@ escape sloc l s (c:cs)
     | otherwise = error $ "Parsing.Lexer.escape: handle error : " ++
         "invalid escape sequence: " ++ c:cs ++ " " ++ show l ++ " - " ++ s
   where
-    escapeOk e = string sloc l (e:s)
+    escapeOk e = string (exd l c) (e:s)
     hex (a:b:bs)
-        | isValidHex (a:b:[]) = escapeOk (toEnum $ do_parseHex $ a:b:[]) bs
-        | otherwise           = error $ "Parsing.Lexer.escape: " ++
+        | isValidHex [a,b] = string (exds l [c,a,b]) ((toEnum $ do_parseHex [a,b]):s) bs
+        | otherwise        = error $ "Parsing.Lexer.escape: TODO: " ++
             "handle error : invalid escape sequence in hex"
     hex _  = error $ "Parsing.Lexer.escape: handle error : " ++
         "invalid escape sequence in hex"
 
-comment :: Loc -> Loc -> String -> String -> [Token]
-comment sloc l s  []    = Tk sloc (TkComment $ reverse s) : do_tokenize l []
-comment sloc l s (c:cs)
-    | c == '\n' = Tk sloc (TkComment $ reverse s) : do_tokenize (adv l c) cs
-    | c == '\r' = comment sloc (adv l c)    s  cs
-    | otherwise = comment sloc (adv l c) (c:s) cs
+comment :: Loc -> String -> String -> [Token]
+comment l s  []    = Tk l (TkComment $ reverse s) : do_tokenize (finish l) []
+comment l s (c:cs)
+    | c == '\n' = Tk l (TkComment $ reverse s) : do_tokenize (adv l c) cs
+    | c == '\r' = comment (exd l c)    s  cs
+    | otherwise = comment (exd l c) (c:s) cs
 
-scan :: Loc -> Loc -> String -> String -> [Token]
-scan sloc l s  []    = identify (reverse s) sloc : do_tokenize l []
-scan sloc l s (c:cs)
-    | shouldStop = identify (reverse s) sloc : do_tokenize l (c:cs)
-    | otherwise  = scan sloc (adv l c) (c:s) cs
+scan :: Loc -> String -> String -> [Token]
+scan l s  []    = identify (reverse s) l : do_tokenize (finish l) []
+scan l s (c:cs)
+    | c == '\n'  = identify (reverse s) l : do_tokenize (finish l) (c:cs)
+    | shouldStop = identify (reverse s) l : do_tokenize (adv l c ) (c:cs)
+    | otherwise  = scan (exd l c) (c:s) cs
   where
     shouldStop  = isPar c || isWhite c || '"' == c
 
