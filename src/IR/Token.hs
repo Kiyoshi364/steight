@@ -4,8 +4,8 @@ module IR.Token
     , Loc(..)
     , Token(..)
     , fromName
-    , emptyLoc, skp, adv, exd, exds, finish
-    , canLocMerge, locMerge, assertLocMerge
+    , emptyLoc, firstLoc, skp, adv, exd, exds, finish
+    , canLocMerge, locMerge, assertLocMerge, locSkip, assertLocSkip
     , ppTokens
     ) where
 
@@ -157,6 +157,9 @@ instance Ord TextPos where
 emptyTextPos :: TextPos
 emptyTextPos = TextPos 1 1
 
+invalidTextPos :: TextPos
+invalidTextPos =  (TextPos 0 0)
+
 advTextPos :: TextPos -> Char -> TextPos
 advTextPos (TextPos line col) c
     | c == '\n' = TextPos (line + 1)  1
@@ -182,7 +185,10 @@ instance Eq Loc where
         sk1 == sk2 && st1 == st2 && e1 == e2
 
 emptyLoc :: Loc
-emptyLoc = Loc emptyTextPos emptyTextPos emptyTextPos
+emptyLoc = Loc invalidTextPos invalidTextPos invalidTextPos
+
+firstLoc :: Loc
+firstLoc = Loc emptyTextPos emptyTextPos emptyTextPos
 
 skp :: Loc -> Char -> Loc
 skp (Loc sk _ e) c =
@@ -204,10 +210,13 @@ finish :: Loc -> Loc
 finish (Loc _ _ e) = Loc e e e
 
 canLocMerge :: Loc -> Loc -> Bool
-canLocMerge (Loc _ _ e1) (Loc sk2 _ _) = e1 == sk2
+canLocMerge l1@(Loc _ _ e1) l2@(Loc sk2 _ _) =
+    e1 == sk2 || emptyLoc == l1 || emptyLoc == l2
 
 locMerge :: Loc -> Loc -> Maybe Loc
 locMerge l1@(Loc sk1 st1 _) l2@(Loc _ _ e2)
+    | emptyLoc == l1    = Just $ l2
+    | emptyLoc == l2    = Just $ l1
     | canLocMerge l1 l2 = Just $ Loc sk1 st1 e2
     | otherwise         = Nothing
 
@@ -217,6 +226,20 @@ assertLocMerge l1 l2 = maybe (
             ++ "(" ++ show (getSkip l1) ++ ")" ++ show l1
             ++ " (" ++ show (getSkip l2) ++ ")" ++ show l2
     ) id $ locMerge l1 l2
+
+locSkip :: Loc -> Loc -> Maybe Loc
+locSkip l1@(Loc sk1 _ _) l2@(Loc _ st2 e2)
+    | emptyLoc == l1    = Just $ l2
+    | emptyLoc == l2    = Just $ l1
+    | canLocMerge l1 l2 = Just $ Loc sk1 st2 e2
+    | otherwise         = Nothing
+
+assertLocSkip :: Loc -> Loc -> Loc
+assertLocSkip l1 l2 = maybe (
+        error $ "assertLocSkip: "
+            ++ "(" ++ show (getSkip l1) ++ ")" ++ show l1
+            ++ " (" ++ show (getSkip l2) ++ ")" ++ show l2
+    ) id $ locSkip l1 l2
 
 data Token = Tk
     { loc :: Loc

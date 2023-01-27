@@ -84,22 +84,29 @@ typetypelit p a (lt, TypeLit i o) = do
     (p2, a2, tout) <- toTypeSigList p1 a1 o
     return (p2, a2, Tfunc tin tout)
   where
-    toTypeSigList :: ByteDict -> ASTDict -> [Either AVar Inst]
+    toTypeSigList :: ByteDict -> ASTDict -> [(Loc, Either AVar Inst)]
         -> Either String (ByteDict, ASTDict, [TypeSig])
     toTypeSigList pt at = foldl (\ pack x -> do
             (p', a', xs) <- pack
             (p'', a'', x'') <- f p' a' x
             return (p'', a'', xs ++ [x''])
         ) $ Right (pt, at, [])
-    f :: ByteDict -> ASTDict -> Either AVar Inst
+    f :: ByteDict -> ASTDict -> (Loc, Either AVar Inst)
         -> Either String (ByteDict, ASTDict, TypeSig)
-    f pf af (Left  (Avar  v)              ) = Right $ (,,) pf af $ Tvar   v
-    f pf af (Left  (Amany v)              ) = Right $ (,,) pf af $ Tmany (v, 0)
-    f pf af (Right (Inst _ (Builtin I64b))) = Right $ (,,) pf af $ Tconst I64
-    f pf af (Right (Inst l  inst         )) = case inst of
-        PType   tlit -> typetypelit pf af (lt, tlit)
-        Identifier _ -> err "identifier"
-        _            -> err "generic"
+    f pf af (_, (Left  (Avar  v)               )) = Right $ (,,) pf af $ Tvar   v
+    f pf af (_, (Left  (Amany v)               )) = Right $ (,,) pf af $ Tmany (v, 0)
+    f pf af (_, (Right (Inst _  (Builtin I64b)))) = Right $ (,,) pf af $ Tconst I64
+    f pf af (l, (Right (Inst l2  inst         ))) =
+        assert l (error $
+            "Typecheck.typetypelit.toTypeSigList.f:"
+            ++ " found non-matching locations: `"
+            ++ show l ++ "` `" ++ show l2
+            ++ "` with instruction " ++ show inst
+         ) l2
+        >> case inst of
+            PType   tlit -> typetypelit pf af (lt, tlit)
+            Identifier _ -> err "identifier"
+            _            -> err "generic"
       where
         err s = Left $ show l
             ++ ": Typecheck.typetypelit: (" ++ s ++ ") instruction "

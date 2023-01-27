@@ -4,12 +4,12 @@ module Parsing.Lexer
     ) where
 
 import IR.Token (Name(..), Tkn(..), Loc, Token(..)
-    , emptyLoc, skp, adv, exd, exds, finish)
+    , firstLoc, skp, adv, exd, exds, finish)
 import Data.Bool (bool)
 import Utils (fork)
 
 tokenize :: String -> [Token]
-tokenize = do_tokenize emptyLoc
+tokenize = do_tokenize firstLoc
 
 do_tokenize :: Loc -> String -> [Token]
 do_tokenize l  []    = Tk l TkEOF : []

@@ -71,7 +71,7 @@ instance Show Builtin where
 data AVar = Avar Int | Amany Int
     deriving (Show, Eq)
 
-data TypeLit = TypeLit [Either AVar Inst] [Either AVar Inst]
+data TypeLit = TypeLit [(Loc, Either AVar Inst)] [(Loc, Either AVar Inst)]
     deriving Eq
 
 instance Show TypeLit where
@@ -79,11 +79,11 @@ instance Show TypeLit where
     show (TypeLit [] o ) = "( " ++ revcatTL o ++ ")"
     show (TypeLit i  o ) = "( " ++ revcatTL i ++ "-- " ++ revcatTL o ++ ")"
 
-revcatTL :: [Either AVar Inst] -> String
+revcatTL :: [(Loc, Either AVar Inst)] -> String
 revcatTL = foldr (\t s -> s ++ f t ++ " ") ""
   where
-    f :: Either AVar Inst -> String
-    f = either show show
+    f :: (Loc, Either AVar Inst) -> String
+    f (l, eai) = show l ++ ":" ++ either show show eai
 
 data CaseDecl = CaseDecl (Loc, String) (Loc, TypeLit)
     deriving Eq
@@ -116,7 +116,7 @@ instance Show Instruction where
 
 data Inst = Inst
     { iloc  :: Loc
-    , instr ::Instruction
+    , instr :: Instruction
     } deriving Eq
 
 instance Show Inst where
