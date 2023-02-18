@@ -5,7 +5,7 @@ module Utils
     , onFst, onSnd, onBoth, onPair, dup
     , loop
     , Id(..), Default(..)
-    , NonEmpty(..), safeHead, safeTail, asList
+    , NonEmpty(..), safeCons, asList
     ) where
 
 -- Combinators
@@ -99,16 +99,16 @@ instance Default e => Semigroup (Id e) where
 instance Default e => Monoid (Id e) where
     mempty = Id def
 
-data NonEmpty a = NonEmpty a [a]
+data NonEmpty a = NonEmpty
+    { safeHead :: a
+    , safeTail :: [a]
+    }
 
 instance Show a => Show (NonEmpty a) where
     show (NonEmpty a as) = show a ++ "::" ++ show as
 
-safeHead :: NonEmpty a -> a
-safeHead (NonEmpty a _) = a
-
-safeTail :: NonEmpty a -> [a]
-safeTail (NonEmpty _ as) = as
+safeCons :: a -> NonEmpty a -> NonEmpty a
+safeCons x = NonEmpty x . asList
 
 asList :: NonEmpty a -> [a]
 asList (NonEmpty a as) = a : as
