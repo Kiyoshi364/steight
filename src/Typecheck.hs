@@ -167,9 +167,12 @@ fromInst p a (Inst l i) = let
         Push x    -> help i64 $ Bcode.Push $ ST.I64 x
         Builtin b -> help (builtinTyp b) $ Bcode.Builtin $ fromBuiltin b
         PQuote xs -> fromInst p a (Inst l (Block Nothing Nothing xs))
-            >>= return . \ (typ, p', a', Right (Bcode.Chk by_is))
-                -> (Tfunc [] [typ], p', a',
-                    Right $ Bcode.Push $ ST.Quote typ $ insts by_is)
+            >>= return . \ (typ, p', a', e_sp_by_i)
+                -> case e_sp_by_i of
+                    Right (Bcode.Chk by_is) -> (Tfunc [] [typ], p', a',
+                        Right $ Bcode.Push $ ST.Quote typ $ insts by_is)
+                    _ -> error $ "Typecheck.fromInst.PQuote: unreachable: "
+                            ++ show e_sp_by_i
         PType tlit -> typetypelit p a (l, tlit)
             >>= return . \ (p', a', typ)
                 -> (Tfunc [] [typ], p', a',

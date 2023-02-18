@@ -17,7 +17,10 @@ data State a = State
 
 begin :: Bytecode -> State a
 begin = fork (State [] []) id $
-    maybe [] (\ (ByteChunk c) -> insts c ) . find "main" . dict
+    maybe [] (\ be -> case be of
+        ByteChunk c -> insts c
+        _ -> error $ "Simulation.begin: unreachable: " ++ show be )
+    . find "main" . dict
 
 simulateIO :: Bytecode -> IO (State StkTyp)
 simulateIO scp = do
