@@ -15,8 +15,8 @@ import Prelude hiding (getLine)
 data Name
     = NUp      String       -- starts with uppercase  , is a type
     | NDown    String       -- starts with lowercase  , is anything
-    | NIntro   String       -- starts with !          , is a type ctor
-    | NElim    String       -- starts with @          , is a type dtor
+    | NIntro   String       -- starts with @          , is a type ctor
+    | NElim    String       -- starts with !          , is a type dtor
     | NBuiltin String       -- starts with #          , is a builtin function
     | NTvar    String       -- starts with '          , is a type variable
     | NTmany   String       -- starts with %          , is a type var args
