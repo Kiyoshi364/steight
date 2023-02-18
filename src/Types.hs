@@ -1,12 +1,15 @@
 module Types
     ( ConstT(..)
     , TypeSig(..)
+    , UserType(..)
+    , UserCase(..)
     , Matched(..)
     , match
     , compose
     ) where
 
 import Types.TypeDef (IVar, IMany, ConstT(..), TypeSig(..))
+import Types.UserType (UserType(..), UserCase(..))
 
 import Utils (fork, onFst, onSnd)
 import qualified Dict as D (Dict)

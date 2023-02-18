@@ -222,9 +222,7 @@ locMerge l1@(Loc sk1 st1 _) l2@(Loc _ _ e2)
 
 assertLocMerge :: Loc -> Loc -> Loc
 assertLocMerge l1 l2 = maybe (
-        error $ "assertLocMerge: "
-            ++ "(" ++ show (getSkip l1) ++ ")" ++ show l1
-            ++ " (" ++ show (getSkip l2) ++ ")" ++ show l2
+        error $ "assertLocMerge: " ++ show l1 ++ " " ++ show l2
     ) id $ locMerge l1 l2
 
 locSkip :: Loc -> Loc -> Maybe Loc

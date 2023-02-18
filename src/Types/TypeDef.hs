@@ -9,6 +9,7 @@ type IMany  = (,) Int Int
 data ConstT
     = I64
     | Type
+    | User String
     deriving (Show, Eq)
 
 data TypeSig

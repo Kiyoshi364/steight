@@ -9,7 +9,7 @@ module IR.Bytecode
     , fromBuiltin
     ) where
 
-import Types (TypeSig(..))
+import Types (TypeSig(..), UserType)
 import IR.Token (Loc, emptyLoc)
 import IR.AST (ipp)
 import qualified IR.AST as AST (Builtin(..))
@@ -18,7 +18,7 @@ import qualified Dict as D (insert, emptyDict)
 
 data ByteEntry
     = ByteChunk Chunk
-    | ByteTypeDecl TypeSig
+    | ByteTypeDecl UserType
     deriving (Eq, Show)
 
 type ByteDict  = Dict String ByteEntry

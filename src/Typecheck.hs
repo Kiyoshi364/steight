@@ -2,11 +2,13 @@ module Typecheck
     ( typecheckIO, typecheck
     )where
 
-import Types (TypeSig(..), ConstT(..), compose)
+import Types (TypeSig(..), ConstT(..), UserType(..), UserCase(..)
+    , compose)
 import IR.Token (Loc)
 import IR.AST as AST
     (AST(..), ASTEntry(..), ASTDict
     , Builtin(I64b), Inst(..), Instruction(..), AVar(..), TypeLit(..)
+    , CaseDecl(..)
     , astEntryLoc
     , builtinTyp)
 import IR.Bytecode as Bcode
@@ -23,17 +25,18 @@ typecheckIO ast = do
     (mainTypOk, errs) <- return $ case find "main" prog of
         Nothing                -> (False, err_ ++
             ["main block not found or with an error"])
-        Just (ByteChunk (Chunk l typ _ _)) ->
+        Just (ByteChunk (Chunk l typ _   _)) ->
             if typ == Tfunc [] [] then (True, err_)
             else (,) False $
             (show l ++ ": In main: main shoud have type `" ++
             show (Tfunc [] []) ++ "` but has type `" ++
             show typ ++ "`") : err_
-        Just (ByteTypeDecl typ           ) ->
+        Just (ByteTypeDecl (UserType loc _)) ->
             (,) False $
-            ("In main: main shoud have type `" ++
-            show (Tfunc [] []) ++ "` but it is a type `" ++
-            show typ ++ "`") : err_
+            ("In main: main shoud be a block of type `" ++
+            show (Tfunc [] []) ++ "` but it is a type" ++
+            " and is defined here: " ++
+            show loc) : err_
     if length errs > 0
     then putStrLn "=== Errors: ==="
         >> mapM putStrLn (map (++"\n") errs)
@@ -47,9 +50,7 @@ isOk :: String -> ByteDict -> Bool
 isOk str prog = case find str prog of
     Nothing                                -> False
     Just (ByteChunk    (Chunk _ _ is scp)) -> rec is (Bcode.dict scp) prog
-    Just (ByteTypeDecl typ               ) -> error (
-            "NOT IMPLEMENTED: Typecheck.isOk.ByteTypeDecl"
-        ) typ
+    Just (ByteTypeDecl _                 ) -> False
   where
     rec  []     _  _ = True
     rec (i:is) scp p = case i of
@@ -73,9 +74,65 @@ iter (errs, prog, (str, (ASTBlock l m_l_tl is)):ast) = Right $
         Left  err    -> (err:errs', prog', ast')
         Right (p, a) -> (    errs', p    , a   )
 iter (errs, prog, (str, (ASTTypeDecl l l_tl cs)):ast) = Right $
-    error (
-        "NOT IMPLEMENTED: Typecheck.iter.ASTTypeDecl"
-    ) errs prog str l l_tl cs ast
+    case typetypedecl prog ast str l l_tl cs of
+        Left  err    -> (err:errs, prog, ast)
+        Right (p, a) -> (    errs, p   , a  )
+
+typetypedecl :: ByteDict -> ASTDict -> String -> Loc
+    -> (Loc, TypeLit) -> [(Loc, CaseDecl)]
+    -> Either String (ByteDict, ASTDict)
+typetypedecl prog ast str l l_tl cs =
+    checkDuplicatedName ast str l
+    >> do_typetypedecl prog ast str l l_tl [] cs
+
+do_typetypedecl :: ByteDict -> ASTDict -> String -> Loc
+    -> (Loc, TypeLit) -> [UserCase] -> [(Loc, CaseDecl)]
+    -> Either String (ByteDict, ASTDict)
+do_typetypedecl prog ast str l l_tl ucs  []    =
+    let
+        typ = (UserType l (reverse ucs))
+        prog' :: ByteDict
+        prog' = insert str (ByteTypeDecl typ) prog
+    in case tl of
+        TypeLit [] [(_, e_vi)] ->
+            case e_vi of
+                Right (Inst _ (Identifier name)) ->
+                    if name == "Type" then Right ()
+                    else err "should return a `Type`"
+                Left _ -> err "is a type variable"
+                _ -> err "weird instruction)"
+        _  -> err "too many types (generic)"
+    >> Right (prog', ast)
+  where
+    (l_t, tl) = l_tl
+    err :: String -> Either String a
+    err reason = Left $ show l_t
+        ++ ": Typecheck.do_typetypedecl: the type of `" ++ str
+        ++ "` declared at " ++ show l
+        ++ " namely `" ++ show tl
+        ++ " is not suported yet, because: " ++ reason
+do_typetypedecl prog ast str l l_tl ucs (c:cs) =
+    let
+        uc = UserCase c_l s
+    in case t of
+        TypeLit [] [(_, e_vi)] ->
+            case e_vi of
+                Right (Inst _ (Identifier id_name)) ->
+                    if id_name == str then Right ()
+                    else err "should return declared type"
+                Left _ -> err "is a type variable"
+                _ -> err "weird instruction"
+        _  -> err "too many types (generic)"
+    >> do_typetypedecl prog ast str l l_tl (uc:ucs) cs
+  where
+    (c_l, c_d) = c
+    CaseDecl (s_l, s) (t_l, t) = c_d
+    err :: String -> Either String a
+    err reason = Left $ show t_l
+        ++ ": Typecheck.do_typetypedecl: case `" ++ s
+        ++ "` named at " ++ show s_l
+        ++ " inside of `" ++ str ++ "` type"
+        ++ " is not suported yet, because: " ++ reason
 
 typetypelit :: ByteDict -> ASTDict -> (Loc, TypeLit)
     -> Either String (ByteDict, ASTDict, TypeSig)
