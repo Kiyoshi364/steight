@@ -275,7 +275,7 @@ fromInst p a (Inst l i) = let
         --         -> (Tfunc [] [], p', a', Left (name, chk))
 
         TypeDecl name typ cs -> error $
-            "Typecheck.fromInst.TypeDecl: not implemented: "
+            "NOT IMPLEMENTED: Typecheck.fromInst.TypeDecl: "
             ++ "name: " ++ show name ++ "; typ: " ++ show typ
             ++ "; cases: " ++ show cs
         Identifier ref -> case (find ref p, find ref a) of
