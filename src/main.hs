@@ -14,6 +14,8 @@ import Simulation (simulateIO)
 import Dict (Dict)
 import System.Environment
 
+import NicePrint.AST (astpp)
+
 main :: IO ()
 main = do
     args <- getArgs
@@ -40,6 +42,7 @@ main = do
     putStrLn $ show p'
     _ <- if ok then putStrLn "\n=== simulation ===" >> simulateIO p'
           else simulateIO $ Bytecode [("main", ByteChunk emptyChunk)]
+    writeFile "out.ast" $ astpp prog
     return ()
 
 iprog :: [Inst]

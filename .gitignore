@@ -4,4 +4,6 @@ zig-out
 
 test.sth
 
+out.*
+
 editor

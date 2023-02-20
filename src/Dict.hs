@@ -3,6 +3,7 @@ module Dict
     , emptyDict, insert
     , findPair, find, findPairWith, findWith
     , partPair, part, partPairWith, partWith
+    , walk
     ) where
 
 import Utils (onPair, dup)
@@ -39,3 +40,6 @@ part = partWith . (==)
 
 partWith :: (k -> Bool) -> Dict k v -> ([v], [v])
 partWith = (onPair (dup $ map snd) .) . partPairWith
+
+walk :: (k -> v -> a) -> Dict k v -> [a]
+walk = fmap . uncurry
