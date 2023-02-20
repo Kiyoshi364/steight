@@ -1,6 +1,7 @@
 module Parsing.Lexer
     ( tokenize
     , parseNum
+    , isUp, isDown, isIntro, isElim, isBuiltin, isSymbol
     ) where
 
 import IR.Token (Name(..), Tkn(..), Loc, Token(..)

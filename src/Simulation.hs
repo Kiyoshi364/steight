@@ -2,6 +2,7 @@ module Simulation
     ( simulateIO, simulate
     ) where
 
+import IR.Identifier (fromNormal)
 import IR.Bytecode
     (Bytecode(..), ByteEntry(..)
     , Chunk(..), StkTyp(..), Builtin(..), ByteInst(..))
@@ -20,7 +21,7 @@ begin = fork (State [] []) id $
     maybe [] (\ be -> case be of
         ByteChunk c -> insts c
         _ -> error $ "Simulation.begin: unreachable: " ++ show be )
-    . find "main" . dict
+    . find (fromNormal "main") . dict
 
 simulateIO :: Bytecode -> IO (State StkTyp)
 simulateIO scp = do
@@ -76,7 +77,7 @@ step s@(State st ot p (i:is)) =
             in Right $ s2{ code = is }
         ChkCall r -> case find r $ dict p of
             Nothing                 -> Left $ Left $
-                "Could not find block `" ++ r ++ "`"
+                "Could not find block `" ++ show r ++ "`"
             Just (ByteChunk chk   ) -> let
                 iis = insts chk
                 (s2, err_hlt) = loop step s{ code = iis }

@@ -37,7 +37,7 @@ casesDeclpps (loc, CaseDecl (l_s, s) (l_t, tl)) =
     $ fmap indent
     $
         [  "with name located at:" ++ show l_s ]
-        ++ [ indent s ]
+        ++ [ indent $ show s ]
         ++ [ "with type located at:" ++ show l_t]
         ++ [ indent $ show tl ]
 

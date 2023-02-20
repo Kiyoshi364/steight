@@ -10,6 +10,8 @@ module IR.Bytecode
     ) where
 
 import Types (TypeSig(..), UserType)
+import IR.Identifier (Identifier)
+import qualified IR.Identifier as Id ()
 import IR.Token (Loc, emptyLoc)
 import IR.AST (ipp)
 import qualified IR.AST as AST (Builtin(..))
@@ -21,7 +23,7 @@ data ByteEntry
     | ByteTypeDecl UserType
     deriving (Eq, Show)
 
-type ByteDict  = Dict String ByteEntry
+type ByteDict  = Dict Identifier ByteEntry
 
 newtype Bytecode = Bytecode
     { dict :: ByteDict
@@ -33,7 +35,7 @@ instance Show Bytecode where
 emptyBytecode :: Bytecode
 emptyBytecode = Bytecode D.emptyDict
 
-cons :: (String, ByteEntry) -> Bytecode -> Bytecode
+cons :: (Identifier, ByteEntry) -> Bytecode -> Bytecode
 cons a (Bytecode as) = Bytecode $ uncurry D.insert a as
 
 data Chunk = Chunk
@@ -103,11 +105,11 @@ data ByteInst
     = Push StkTyp
     | Builtin Builtin
     | Chk Chunk
-    | ChkCall String
+    | ChkCall Identifier
     deriving Eq
 
 instance Show ByteInst where
     show (Push    p) = show p
     show (Builtin b) = show b
     show (Chk     b) = show b
-    show (ChkCall r) = "{" ++ r ++ "}"
+    show (ChkCall r) = "{" ++ show r ++ "}"

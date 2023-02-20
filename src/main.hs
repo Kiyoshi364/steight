@@ -5,6 +5,7 @@ module Main
 
 import Parsing.Lexer (tokenize)
 import Parsing.Parser (parse)
+import IR.Identifier (Identifier, fromNormal)
 import IR.Token (emptyLoc)
 import IR.AST (AST(..), ASTEntry(ASTBlock)
     , Inst(..), Instruction(..), Builtin(..))
@@ -34,14 +35,14 @@ main = do
     prog <- case parsed of
         Left  errs -> putStrLn (foldMap
             (\ (loc, err) -> "\n" ++ show loc ++ ": " ++ err) errs)
-            >> return (AST [("main", ASTBlock emptyLoc Nothing [])])
+            >> return (AST [(fromNormal "main", ASTBlock emptyLoc Nothing [])])
         Right  r   -> return r
     putStrLn $ show prog
     putStrLn ""
     (p', ok) <- typecheckIO prog
     putStrLn $ show p'
     _ <- if ok then putStrLn "\n=== simulation ===" >> simulateIO p'
-          else simulateIO $ Bytecode [("main", ByteChunk emptyChunk)]
+          else simulateIO $ Bytecode [(fromNormal "main", ByteChunk emptyChunk)]
     writeFile "out.ast" $ astpp prog
     return ()
 
@@ -55,9 +56,9 @@ iprog = [
 toI :: (a -> Instruction) -> a -> Inst
 toI f x = Inst emptyLoc $ f x
 
-bprog :: Dict String ByteEntry
+bprog :: Dict Identifier ByteEntry
 bprog = (\ (_, b, _) -> b) $ typecheck
-    $ AST [("main", ASTBlock emptyLoc Nothing iprog)]
+    $ AST [(fromNormal "main", ASTBlock emptyLoc Nothing iprog)]
 
 tprog :: Bytecode
 tprog = Bytecode bprog

@@ -2,6 +2,10 @@ module Parsing.Parser
     ( parse
     ) where
 
+import IR.Identifier (Identifier(..), mk_normal, mk_type
+    , mk_constructor, mk_destructor, mk_builtin)
+import qualified IR.Identifier as Id (Normal, Type
+    , Constructor, Destructor, Builtin)
 import IR.Token (Name(..), Tkn(..), Loc, Token(..)
     , fromName, emptyLoc, assertLocMerge, assertLocSkip, ppTokens)
 import IR.AST (AST(..), ASTEntry(..)
@@ -36,9 +40,9 @@ parser = oneOrMoreP (
             -- Note: here the name location is dropped
             -- don't know where to use it
             Block (Just (_, n)) m_l_typ is
-                -> (l, (n, (ASTBlock    l m_l_typ is)))
+                -> (l, (INormal n, (ASTBlock    l m_l_typ is)))
             TypeDecl    (_, n)    l_typ cs
-                -> (l, (n, (ASTTypeDecl l   l_typ cs)))
+                -> (l, (IType   n, (ASTTypeDecl l   l_typ cs)))
             _ -> error $ "Parsing.parser: non-exhaustive pattern: " ++ show inst)
     )
     |$> asList \\ joinLocs \\ onSnd (fmap snd)
@@ -58,17 +62,30 @@ matchTk = matchP . tk
 match :: Tkn -> Parser Loc
 match = fmap loc . matchTk
 
--- Note: maybe it should return a Name
-matchAnyName :: [Name] -> Parser (Loc, String)
+matchAnyName :: [Name] -> Parser (Loc, Name)
 matchAnyName = fmap (TkName \\ tk)
     \\ matchAnyP
-    \\ fmap (fork (,) loc (tkn \\ getString))
+    \\ fmap (fork (,) loc (tkn \\ getName))
 
-getString :: Tkn -> String
-getString (TkName n) = fromName n
-getString (TkComment s) = s
-getString t = error $ "Parsing.Parser.getString: expected TkName or " ++
-    "TkComment found `" ++ show t ++ "`"
+getName :: Tkn -> Name
+getName (TkName n) = n
+getName t = error $ "Parsing.Parser.getName: expected TkName " ++
+    "found `" ++ show t ++ "`"
+
+getComment :: Tkn -> String
+getComment (TkComment s) = s
+getComment t = error $ "Parsing.Parser.getComment: expected TkComment " ++
+    "found `" ++ show t ++ "`"
+
+getNum :: Tkn -> Int
+getNum (TkName n) = case n of
+    NTvar   num -> parseNum num
+    NTmany  num -> parseNum num
+    NNumber num -> parseNum num
+    t           -> error $ "Parsing.Parser.getNum: expected " ++
+        "NTvar, NTmany or NNumber found `" ++ show t ++ "`"
+getNum t = error $ "Parsing.Parser.getNum: expected TkName " ++
+    "found `" ++ show t ++ "`"
 
 inTypeP :: Parser Inst
 inTypeP = commentsLocSkip <$> zeroOrMoreP commentP <*>
@@ -91,7 +108,7 @@ topLvlP = commentsLocSkip <$> zeroOrMoreP commentP <*>
 
 pushIntP :: Parser Inst
 pushIntP = matchTk (TkName $ NNumber "")
-        |$> fork Inst loc (tkn \\ getString \\ parseNum \\ Push)
+        |$> fork Inst loc (tkn \\ getNum \\ Push)
 
 builtinP :: Parser Inst
 builtinP = fmap (fork Inst fst $ Builtin . snd) $
@@ -142,11 +159,11 @@ nameblkP :: Parser Inst
 nameblkP = withLoc1 Inst
     <$> match TkBlock
     <*> (helpBlock
-        <$> fmap Just newIdP
+        <$> fmap Just idNormalP
         <*> optP typeLitP
         <*> instendp instP TkEnd)
 
-helpBlock :: Maybe (Loc, String) -> Maybe (Loc, TypeLit)
+helpBlock :: Maybe (Loc, Id.Normal) -> Maybe (Loc, TypeLit)
     -> (Loc, [Inst]) -> (Loc, Instruction)
 helpBlock m_name m_typ (l3, is) =
     let
@@ -159,7 +176,7 @@ typedeclP :: Parser Inst
 typedeclP = withLoc1 Inst
     <$> match TkType
     <*> (helpType
-        <$> newIdP
+        <$> idTypeP
         <*> typeLitP
         <*> instructionendp casesP TkEnd)
   where
@@ -171,10 +188,10 @@ casesP :: Parser (Loc, CaseDecl)
 casesP = withLoc1 (,)
     <$> match TkCase
     <*> (helpCase
-        <$> newIdP
+        <$> idNormalP
         <*> typeLitP)
   where
-    helpCase :: (Loc, String) -> (Loc, TypeLit) -> (Loc, CaseDecl)
+    helpCase :: (Loc, Id.Normal) -> (Loc, TypeLit) -> (Loc, CaseDecl)
     helpCase newid@(l1, _) typ@(l2, _) =
         (assertLocMerge l1 l2, CaseDecl newid typ)
 
@@ -209,15 +226,36 @@ joinLocs = foldr
     (emptyLoc, [])
 
 identifierP :: Parser Inst
-identifierP = fork Inst fst (snd \\ Identifier) <$> matchAnyName
-    [ NUp      "" , NDown    "" , NIntro   ""
-    , NElim    "" , NBuiltin "" , NSymbol  "" ]
+identifierP = fmap (uncurry Inst . onSnd Identifier)
+    (   onSnd INormal      <$> idNormalP
+    <|> onSnd IType        <$> idTypeP
+    <|> onSnd IConstructor <$> idConstructorP
+    <|> onSnd IDestructor  <$> idDestructorP
+    <|> onSnd IBuiltin     <$> idBuiltinP
+    )
 
-newIdP :: Parser (Loc, String)
-newIdP = matchAnyName [ NUp "" , NDown "" , NSymbol "" ]
+idNormalP :: Parser (Loc, Id.Normal)
+idNormalP = onSnd (fromName \\ mk_normal)
+    <$> matchAnyName [ NDown "", NSymbol "" ]
+
+idTypeP :: Parser (Loc, Id.Type)
+idTypeP = idMacroP mk_type $ NUp ""
+
+idConstructorP :: Parser (Loc, Id.Constructor)
+idConstructorP = idMacroP mk_constructor $ NIntro ""
+
+idDestructorP :: Parser (Loc, Id.Destructor)
+idDestructorP = idMacroP mk_destructor $ NElim ""
+
+idBuiltinP :: Parser (Loc, Id.Builtin)
+idBuiltinP = idMacroP mk_builtin $ NBuiltin ""
+
+idMacroP :: (String -> a) -> Name -> Parser (Loc, a)
+idMacroP ctor name = onSnd (fromName \\ ctor)
+    <$> matchAnyName [ name ]
 
 commentP :: Parser (Loc, String)
-commentP = fmap (fork (,) loc $ getString . tkn) $ matchTk $ TkComment ""
+commentP = fmap (fork (,) loc $ getComment . tkn) $ matchTk $ TkComment ""
 
 commentsLocMerge :: [(Loc, String)] -> (Loc, String)
 commentsLocMerge = onSnd (maybe "" id) . foldr
@@ -247,7 +285,7 @@ typeLitP = (\ (li,i) (lo,o) ->
     typp = fork (,) iloc Right <$> inTypeP
         <|> (\ t e_ai -> (loc t, Inst (loc t) <$> e_ai))
             <$> matchTk TkI64b <*> pure (Right $ Builtin I64b)
-        <|> fork (,) loc (tkn \\ getString \\ parseNum \\ Avar \\ Left)
+        <|> fork (,) loc (tkn \\ getNum \\ Avar \\ Left)
             <$> (matchTk (TkName $ NTvar ""))
-        <|> fork (,) loc (tkn \\ getString \\ parseNum \\ Amany \\ Left)
+        <|> fork (,) loc (tkn \\ getNum \\ Amany \\ Left)
             <$> (matchTk (TkName $ NTmany ""))

@@ -12,6 +12,8 @@ module IR.AST
     , builtinTyp
     ) where
 
+import IR.Identifier (Identifier)
+import qualified IR.Identifier as Id (Normal, Type)
 import IR.Token (Loc)
 import Types.TypeDef (TypeSig(..), ConstT(..))
 import Dict (Dict)
@@ -22,7 +24,7 @@ data ASTEntry
     | ASTTypeDecl Loc (Loc, TypeLit) [(Loc, CaseDecl)]
     deriving (Eq, Show)
 
-type ASTDict  = Dict String ASTEntry
+type ASTDict  = Dict Identifier ASTEntry
 
 data AST = AST
     { dict :: ASTDict
@@ -33,7 +35,7 @@ instance Show AST where show (AST ds) = "AST " ++ show ds
 emptyAST :: AST
 emptyAST = AST D.emptyDict
 
-cons :: String -> ASTEntry -> AST -> AST
+cons :: Identifier -> ASTEntry -> AST -> AST
 cons k v (AST d) = AST $ D.insert k v d
 
 astEntryLoc :: ASTEntry -> Loc
@@ -85,7 +87,7 @@ revcatTL = foldr (\t s -> s ++ f t ++ " ") ""
     f :: (Loc, Either AVar Inst) -> String
     f (l, eai) = show l ++ ":" ++ either show show eai
 
-data CaseDecl = CaseDecl (Loc, String) (Loc, TypeLit)
+data CaseDecl = CaseDecl (Loc, Id.Normal) (Loc, TypeLit)
     deriving Eq
 
 instance Show CaseDecl where
@@ -96,9 +98,9 @@ data Instruction
     | Builtin Builtin
     | PQuote [Inst]
     | PType TypeLit
-    | Block (Maybe (Loc, String)) (Maybe (Loc, TypeLit)) [Inst]
-    | TypeDecl (Loc, String) (Loc, TypeLit) [(Loc, CaseDecl)]
-    | Identifier String
+    | Block (Maybe (Loc, Id.Normal)) (Maybe (Loc, TypeLit)) [Inst]
+    | TypeDecl (Loc, Id.Type) (Loc, TypeLit) [(Loc, CaseDecl)]
+    | Identifier Identifier
     deriving Eq
 
 instance Show Instruction where
@@ -112,7 +114,7 @@ instance Show Instruction where
         ipp is ++ "end"
     show (TypeDecl l_name l_typ cs) = "type " ++ show l_name ++
         " " ++ show l_typ ++ " " ++ ipp cs
-    show (Identifier ref) = "{" ++ ref ++ "}"
+    show (Identifier ref) = "{" ++ show ref ++ "}"
 
 data Inst = Inst
     { iloc  :: Loc
