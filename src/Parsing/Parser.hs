@@ -3,7 +3,7 @@ module Parsing.Parser
     ) where
 
 import IR.Token (Name(..), Tkn(..), Loc, Token(..)
-    , fromName, emptyLoc, assertLocMerge, ppTokens)
+    , fromName, emptyLoc, assertLocMerge, assertLocSkip, ppTokens)
 import IR.AST (AST(..), ASTEntry(..)
     , Builtin(..), AVar(..) , TypeLit(..)
     , CaseDecl(..), Inst(..), Instruction(..), cons, emptyAST)
@@ -227,8 +227,7 @@ commentsLocMerge = onSnd (maybe "" id) . foldr
 
 commentsLocSkip :: [(Loc, String)] -> Inst -> Inst
 commentsLocSkip = commentsLocMerge \\ fst
-    \\ (\ l1 -> fork Inst (assertLocMerge l1 . iloc) instr)
-    -- \\ ( \ l1 (Inst l2 i) -> Inst (assertLocMerge l1 l2) i)
+    \\ (\ l1 -> fork Inst (assertLocSkip l1 . iloc) instr)
 
 errP :: Parser a
 errP = failWithErrP $ \ mt -> case mt of
