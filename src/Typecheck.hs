@@ -264,25 +264,6 @@ fromInst p a (Inst l i) = let
             return $ maybe (typT by_is , p2, a2, Right $ Bcode.Chk by_is)
                 (\ name -> (Tfunc [] [], p2, a2, Left  $ (,) name $ ByteChunk by_is))
                 (fmap (INormal . snd) m_l_name)
-        -- Doblk  xs -> typechunk p a "do-block" Nothing xs
-        --     >>= return . \ (("do-block",by_is):p', a')
-        --         -> (typT by_is, p', a', Right $ Bcode.Chk by_is)
-        -- Typblk tlit xs -> typetypelit p a tlit
-        --     >>= \ (p', a', typ) -> fromInst p' a' (Doblk xs)
-        --     >>= assertWith ((typ==) . (\(f, _, _, _) -> f))
-        --             (\ (tp, _, _, _) ->
-        --             "The typed-do-block `" ++ show (Doblk xs)
-        --             ++ "` expected type was `"    ++ show typ
-        --             ++ "`, but actual type is `"  ++ show tp ++ "`")
-        -- Nameblk name xs ->
-        --     fromInst p a (Doblk xs)
-        --     >>= return . \ (_typ, p', a', Right (Bcode.Chk chk))
-        --         -> (Tfunc [] [], p', a', Left (name, chk))
-        -- NameTypblk name typ xs ->
-        --     fromInst p a (Typblk typ xs)
-        --     >>= return . \ (_typ, p', a', Right (Bcode.Chk chk))
-        --         -> (Tfunc [] [], p', a', Left (name, chk))
-
         TypeDecl name typ cs -> error $
             "NOT IMPLEMENTED: Typecheck.fromInst.TypeDecl: "
             ++ "name: " ++ show name ++ "; typ: " ++ show typ
