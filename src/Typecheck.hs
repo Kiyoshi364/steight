@@ -156,12 +156,12 @@ typetypelit p a (lt, TypeLit i o) = do
             (p'', a'', x'') <- f p' a' x
             return (p'', a'', xs ++ [x''])
         ) $ Right (pt, at, [])
+
     f :: ByteDict -> ASTDict -> (Loc, Either AVar Inst)
         -> Either String (ByteDict, ASTDict, TypeSig)
-    f pf af (_, (Left  (Avar  v)               )) = Right $ (,,) pf af $ Tvar   v
-    f pf af (_, (Left  (Amany v)               )) = Right $ (,,) pf af $ Tmany (v, 0)
-    f pf af (_, (Right (Inst _  (Builtin I64b)))) = Right $ (,,) pf af $ Tconst I64
-    f pf af (l, (Right (Inst l2  inst         ))) =
+    f pf af (_, (Left  (Avar  v)      )) = Right $ (,,) pf af $ Tvar   v
+    f pf af (_, (Left  (Amany v)      )) = Right $ (,,) pf af $ Tmany (v, 0)
+    f pf af (l, (Right (Inst l2  inst))) =
         assert l (error $
             "Typecheck.typetypelit.toTypeSigList.f:"
             ++ " found non-matching locations: `"
@@ -169,6 +169,7 @@ typetypelit p a (lt, TypeLit i o) = do
             ++ "` with instruction " ++ show inst
          ) l2
         >> case inst of
+            Builtin I64b -> Right $ (,,) pf af $ Tconst I64
             PType   tlit -> typetypelit pf af (lt, tlit)
             Identifier _ -> err "identifier"
             _            -> err "generic"
