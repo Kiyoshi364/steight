@@ -16,12 +16,6 @@ A STack based programming language, with an H at the end.
 
 * Dependent Types
 
-* #push/#pop
-  * This should help building combinators
-    and saving/restoring values
-    that are going to be used later
-  * Imagine a second stack (a helper stack)
-
 ## Far Future
 
 Note: that it is not ordered in any relevant way
@@ -50,3 +44,41 @@ Note: that it is not ordered in any relevant way
         argument1 argument2 other-args
       end user-macro
     ```
+
+# Once Possible Features
+
+## #push/#pop
+
+* This should help building combinators
+  and saving/restoring values
+  that are going to be used later
+
+* Imagine a second stack (a helper stack)
+
+* It's is not needed as a builtin,
+  can be implemented in terms of `dip`:
+  ```
+    block dip ( %0 ( %0 -- %1 ) '0 -- %1 '0 ) #todo end
+  ```
+
+  So this:
+  ```
+    do
+      #push
+      doing something lalala
+      #pop
+    end
+  ```
+  can be translated to
+  ```
+    do
+      [ doing something lalala ] dip
+    end
+  ```
+
+  Also could be used as an user defined block:
+  ```
+    begin save
+      doing something lalala
+    end save
+  ```
