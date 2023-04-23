@@ -4,8 +4,8 @@ module Typecheck
 
 import Types (TypeSig(..), ConstT(..), UserType(..), UserCase(..)
     , compose)
-import IR.Identifier (Identifier(..), fromNormal, mk_type)
-import qualified IR.Identifier as Id (Normal(..), Type)
+import IR.Identifier (Identifier(..), mk_type, mk_builtin)
+import qualified IR.Identifier as Id (Type, fromNormal, fromBuiltin)
 import IR.Token (Loc)
 import IR.AST as AST
     (AST(..), ASTEntry(..), ASTDict
@@ -25,7 +25,7 @@ typecheckIO :: AST -> IO (Bytecode, Bool)
 typecheckIO ast = do
     (err_, prog, []) <- return (typecheck ast)
     (mainTypOk, errs) <- return $
-        case find (INormal $ Id.Normal "main") prog of
+        case find (Id.fromNormal "main") prog of
             Nothing                -> (False, err_ ++
                 ["main block not found or with an error"])
             Just (ByteChunk (Chunk l typ _   _)) ->
@@ -44,7 +44,7 @@ typecheckIO ast = do
     then putStrLn "=== Errors: ==="
         >> mapM putStrLn (map (++"\n") errs)
         >> putStrLn "===============\n"
-        >> if isOk (INormal $ Id.Normal "main") prog
+        >> if isOk (Id.fromNormal "main") prog
             then return (Bytecode prog, mainTypOk)
             else return (Bytecode prog, False    )
     else return (Bytecode prog, mainTypOk)
@@ -244,10 +244,15 @@ fromInst p a (Inst l i) = let
                 -> (Tfunc [] [typ], p', a',
                     Right $ Bcode.Push $ ST.Type typ)
         Block m_l_name m_l_tlit xs -> do
-            (p', a1) <- typechunk p a (fromNormal "do-block") Nothing l xs
+            (p', a1) <- typechunk p a (Id.fromBuiltin "#do-block") Nothing l xs
             (by_is, p1) <- case p' of
-                ((INormal (Id.Normal "do-block"), ByteChunk by_is):p1)
-                         -> return (by_is, p1)
+                (top@(IBuiltin builtin, ByteChunk by_is):p1)
+                         -> if builtin == mk_builtin "#do-block"
+                    then return (by_is, p1)
+                    else error $
+                        "Typecheck.fromInst.Block: unreacheable: " ++
+                        "expected \"do-block\" at the top of the program" ++
+                        "found `" ++ show top ++ "`"
                 (top:_ ) -> error $
                     "Typecheck.fromInst.Block: unreacheable: " ++
                     "found `" ++ show top ++ "` at the top of the program"

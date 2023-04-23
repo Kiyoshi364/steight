@@ -1,6 +1,6 @@
 module IR.Identifier
     ( Identifier(..)
-    , Normal(..), Type, Constructor, Destructor, Builtin
+    , Normal, Type, Constructor, Destructor, Builtin
     , mk_normal, mk_type, mk_constructor, mk_destructor, mk_builtin
     , fromNormal, fromType, fromConstructor
     , fromDestructor, fromBuiltin
