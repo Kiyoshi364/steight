@@ -206,7 +206,7 @@ instructionseqp p start end = onFst . assertLocMerge
 instructionendp :: Parser (Loc, a) -> Tkn -> Parser (Loc, [(Loc, a)])
 instructionendp p end = joinListLocsLoc
     <$> zeroOrMoreP p
-    <*> match end
+    <*> (skipCommentsLoc $ match end)
   where
     joinListLocsLoc :: [(Loc, a)] -> Loc -> (Loc, [(Loc, a)])
     joinListLocsLoc xs l =
@@ -272,6 +272,11 @@ commentsLocSkip merge toLoc toRest = commentsLocMerge \\ fst
 skipCommentsInst :: Parser Inst -> Parser Inst
 skipCommentsInst = (<*>)
     ( commentsLocSkip Inst iloc instr
+    <$> zeroOrMoreP commentP)
+
+skipCommentsLoc :: Parser Loc -> Parser Loc
+skipCommentsLoc = (<*>)
+    ( commentsLocSkip const id (const ())
     <$> zeroOrMoreP commentP)
 
 errP :: Parser a
