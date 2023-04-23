@@ -16,7 +16,7 @@ import Parsing.ParserLib
     ( ParserLib(..), (<|>) , failWithErrP
     , matchP, matchAnyP, optP, zeroOrMoreP, oneOrMoreP
     )
-import Utils ((\\) , (|$>) , (...) , fork, onFst, onSnd, asList)
+import Utils ((\\) , (|$>) , fork, onFst, onSnd, asList)
 
 type Error = [] (Loc, String)
 type Parser = ParserLib Error [] Token
@@ -88,7 +88,7 @@ getNum t = error $ "Parsing.Parser.getNum: expected TkName " ++
     "found `" ++ show t ++ "`"
 
 inTypeP :: Parser Inst
-inTypeP = commentsLocSkip <$> zeroOrMoreP commentP <*>
+inTypeP = skipCommentsInst
     (   pushIntP
     <|> builtinP
     <|> quotedP
@@ -97,13 +97,13 @@ inTypeP = commentsLocSkip <$> zeroOrMoreP commentP <*>
     <|> errP)
 
 instP :: Parser (Loc, Inst)
-instP = (fork (,) iloc id ... commentsLocSkip) <$> zeroOrMoreP commentP <*>
+instP = (skipCommentsInst \\ fmap (fork (,) iloc id))
     ( inTypeP
     <|> doblkP <|> nameblkP
     <|> errP)
 
 topLvlP :: Parser Inst
-topLvlP = commentsLocSkip <$> zeroOrMoreP commentP <*>
+topLvlP = skipCommentsInst
     (nameblkP <|> typedeclP <|> errP)
 
 pushIntP :: Parser Inst
@@ -263,9 +263,16 @@ commentsLocMerge = onSnd (maybe "" id) . foldr
         (assertLocMerge l1 l2, Just $ c ++ maybe "" ("\n" ++) ms))
     (emptyLoc, Nothing)
 
-commentsLocSkip :: [(Loc, String)] -> Inst -> Inst
-commentsLocSkip = commentsLocMerge \\ fst
-    \\ (\ l1 -> fork Inst (assertLocSkip l1 . iloc) instr)
+commentsLocSkip ::
+    (Loc -> b -> a) -> (a -> Loc) -> (a -> b)
+    -> [(Loc, String)] -> a -> a
+commentsLocSkip merge toLoc toRest = commentsLocMerge \\ fst
+    \\ (\ l1 -> fork merge (assertLocSkip l1 . toLoc) toRest)
+
+skipCommentsInst :: Parser Inst -> Parser Inst
+skipCommentsInst = (<*>)
+    ( commentsLocSkip Inst iloc instr
+    <$> zeroOrMoreP commentP)
 
 errP :: Parser a
 errP = failWithErrP $ \ mt -> case mt of
