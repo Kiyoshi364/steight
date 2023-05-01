@@ -4,12 +4,18 @@ module Types
     , UserType(..)
     , UserCase(..)
     , Matched(..)
+    , userType2destructorType
+    , userType2constructors
     , match
     , compose
     ) where
 
 import Types.TypeDef (IVar, IMany, ConstT(..), TypeSig(..))
 import Types.UserType (UserType(..), UserCase(..))
+import Types.UserTypeUtils
+    ( userType2destructorType
+    , userType2constructors
+    )
 
 import Utils (fork, onFst, onSnd)
 import qualified Dict as D (Dict)

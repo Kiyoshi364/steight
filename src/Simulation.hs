@@ -6,8 +6,11 @@ import IR.Identifier (fromNormal)
 import IR.Bytecode
     (Bytecode(..), ByteEntry(..)
     , Chunk(..), StkTyp(..), Builtin(..), ByteInst(..))
+import Types (UserType(..), UserCase(..))
 import Utils (fork, loop)
 import Dict (find)
+
+import qualified Data.List as List (find)
 
 data State a = State
     { stack  :: [a]
@@ -85,5 +88,24 @@ step s@(State st ot p (i:is)) =
                     Left err -> Left $ Left err
                     Right () -> Right $ s2{ code = is }
             Just (ByteTypeDecl typ) -> error (
-                    "NOT IMPLEMENTED: Simulation.step"
+                    "NOT IMPLEMENTED: Simulation.step.ChkCall.ByteTypeDecl"
                 ) typ
+        Construct ut@(UserType _ ucs) name ->
+            case List.find (\ (UserCase _ n) -> n == name) ucs of
+                Nothing -> error $ "Case `" ++ show name ++ "` is not in type `"
+                    ++ show ut ++ "`"
+                Just _  -> let
+                        n = 0
+                        udata = UserData ut name $ take n st
+                        st2 = udata : drop n st
+                        s2 = state{ stack = st2 }
+                    in Right $ s2
+        Destruct (UserType _ ucs) -> let
+                st2 = drop (length ucs) st
+                (UserData _ name ust) = head st2
+                (Just (Quote _ iis)) = fmap snd
+                    . List.find
+                        ((\ (UserCase _ n) -> n == name) . fst)
+                        $ zip ucs st
+                s2 = fst $ simulate s{ stack = ust ++ tail st2, code = iis }
+            in Right $ s2{ code = is }

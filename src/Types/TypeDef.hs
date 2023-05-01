@@ -3,13 +3,15 @@ module Types.TypeDef
     , TypeSig(..)
     ) where
 
+import IR.Identifier as Id (Type)
+
 type IVar   = Int
 type IMany  = (,) Int Int
 
 data ConstT
     = I64
     | Type
-    | User String
+    | User Id.Type
     deriving (Show, Eq)
 
 data TypeSig

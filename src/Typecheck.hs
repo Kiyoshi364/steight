@@ -3,9 +3,13 @@ module Typecheck
     )where
 
 import Types (TypeSig(..), ConstT(..), UserType(..), UserCase(..)
+    , userType2destructorType, userType2constructors
     , compose)
 import IR.Identifier (Identifier(..), mk_type, mk_builtin)
-import qualified IR.Identifier as Id (Type, fromNormal, fromBuiltin)
+import qualified IR.Identifier as Id
+    ( Type, fromNormal, fromBuiltin
+    , type2destructor, normal2constructor
+    )
 import IR.Token (Loc)
 import IR.AST as AST
     (AST(..), ASTEntry(..), ASTDict
@@ -14,7 +18,7 @@ import IR.AST as AST
     , astEntryLoc
     , builtinTyp)
 import IR.Bytecode as Bcode
-    (Bytecode(..), ByteEntry(..), ByteDict, cons
+    (Bytecode(..), ByteEntry(..), ByteDict, cons, emptyBytecode
     , Chunk(..), emptyChunk, ByteInst, fromBuiltin)
 import qualified IR.Bytecode as ST (StkTyp(..))
 import qualified IR.Bytecode as Bcode (ByteInst(..))
@@ -97,9 +101,17 @@ do_typetypedecl :: ByteDict -> ASTDict -> Id.Type -> Loc
     -> Either String (ByteDict, ASTDict)
 do_typetypedecl prog ast str l l_tl ucs  []    =
     let
-        typ = (UserType l (reverse ucs))
+        typ :: UserType
+        -- NOTE: no need to reverse, to be zipped with stack
+        typ = (UserType l ucs)
+        prog1 :: ByteDict
+        prog1 = insert (IType str) (ByteTypeDecl typ) prog
+        prog2 :: ByteDict
+        prog2 = insertDestructor typ prog1
+        prog3 :: ByteDict
+        prog3 = insertConstructors typ prog2
         prog' :: ByteDict
-        prog' = insert (IType str) (ByteTypeDecl typ) prog
+        prog' =  prog3
     in case tl of
         TypeLit [] [(_, e_vi)] ->
             case e_vi of
@@ -107,7 +119,7 @@ do_typetypedecl prog ast str l l_tl ucs  []    =
                     if name == (mk_type "Type") then Right ()
                     else err "should return a `Type`"
                 Left _ -> err "is a type variable"
-                _ -> err "weird instruction)"
+                _ -> err "(weird instruction)"
         _  -> err "too many types (generic)"
     >> Right (prog', ast)
   where
@@ -119,9 +131,25 @@ do_typetypedecl prog ast str l l_tl ucs  []    =
         ++ "` declared at " ++ show l
         ++ " namely `" ++ show tl
         ++ " is not suported yet, because: " ++ reason
+    insertDestructor :: UserType -> ByteDict -> ByteDict
+    insertDestructor ut = insert
+        (IDestructor $ Id.type2destructor str)
+        (ByteChunk $
+            Chunk l (userType2destructorType str ut)
+            [ Bcode.Destruct ut ]
+            emptyBytecode
+        )
+    insertConstructors :: UserType -> ByteDict -> ByteDict
+    insertConstructors ut progA =
+        foldr (\ (lc, s, t) -> insert
+            (IConstructor $ s)
+            (ByteChunk $
+                Chunk lc t [ Bcode.Construct ut s ] emptyBytecode
+            )
+        ) progA (userType2constructors str ut)
 do_typetypedecl prog ast str l l_tl ucs (c:cs) =
     let
-        uc = UserCase c_l s
+        uc = UserCase c_l (Id.normal2constructor s)
     in case t of
         TypeLit [] [(_, e_vi)] ->
             case e_vi of

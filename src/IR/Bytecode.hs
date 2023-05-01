@@ -11,7 +11,7 @@ module IR.Bytecode
 
 import Types (TypeSig(..), UserType)
 import IR.Identifier (Identifier)
-import qualified IR.Identifier as Id ()
+import qualified IR.Identifier as Id (Constructor)
 import IR.Token (Loc, emptyLoc)
 import IR.AST (ipp)
 import qualified IR.AST as AST (Builtin(..))
@@ -59,12 +59,15 @@ data StkTyp
     = I64 Int
     | Quote TypeSig [ByteInst]
     | Type TypeSig
+    | UserData UserType Id.Constructor [StkTyp]
     deriving Eq
 
 instance Show StkTyp where
     show (I64      x) = show x
     show (Quote t is) = "[ " ++ ipp is ++ "]::" ++ show t
     show (Type  t   ) = show t
+    show (UserData  ut name ds) =
+        "(" ++ show ut ++ ")." ++ show name ++ " " ++ show ds
 
 data Builtin
     = Add
@@ -106,10 +109,14 @@ data ByteInst
     | Builtin Builtin
     | Chk Chunk
     | ChkCall Identifier
+    | Construct UserType Id.Constructor
+    | Destruct UserType
     deriving Eq
 
 instance Show ByteInst where
-    show (Push    p) = show p
-    show (Builtin b) = show b
-    show (Chk     b) = show b
-    show (ChkCall r) = "{" ++ show r ++ "}"
+    show (Push        p) = show p
+    show (Builtin     b) = show b
+    show (Chk         b) = show b
+    show (ChkCall     r) = "{" ++ show r ++ "}"
+    show (Construct t c) = "@(" ++ show t ++ ")." ++ show c
+    show (Destruct    t) = "!" ++ show t

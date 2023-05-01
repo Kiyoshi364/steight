@@ -4,6 +4,7 @@ module IR.Identifier
     , mk_normal, mk_type, mk_constructor, mk_destructor, mk_builtin
     , fromNormal, fromType, fromConstructor
     , fromDestructor, fromBuiltin
+    , type2destructor, normal2constructor
     ) where
 
 import Parsing.Lexer
@@ -93,3 +94,9 @@ mk_builtin []    = error $ "IR.Identifier.mk_builtin: invalid Builtin `[]`"
 
 fromBuiltin :: String -> Identifier
 fromBuiltin = IBuiltin . mk_builtin
+
+type2destructor :: Type -> Destructor
+type2destructor (Type i) = mk_destructor $ '!' : i
+
+normal2constructor :: Normal -> Constructor
+normal2constructor (Normal i) = mk_constructor $ '@' : i
