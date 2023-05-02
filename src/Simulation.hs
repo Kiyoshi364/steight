@@ -6,7 +6,7 @@ import IR.Identifier (fromNormal)
 import IR.Bytecode
     (Bytecode(..), ByteEntry(..)
     , Chunk(..), StkTyp(..), Builtin(..), ByteInst(..))
-import Types (UserType(..), UserCase(..))
+import Types (UserType(UserType))
 import Utils (fork, loop)
 import Dict (find)
 
@@ -91,7 +91,7 @@ step s@(State st ot p (i:is)) =
                     "NOT IMPLEMENTED: Simulation.step.ChkCall.ByteTypeDecl"
                 ) typ
         Construct ut@(UserType _ ucs) name ->
-            case List.find (\ (UserCase _ n) -> n == name) ucs of
+            case find name ucs of
                 Nothing -> error $ "Case `" ++ show name ++ "` is not in type `"
                     ++ show ut ++ "`"
                 Just _  -> let
@@ -105,7 +105,7 @@ step s@(State st ot p (i:is)) =
                 (UserData _ name ust) = head st2
                 (Just (Quote _ iis)) = fmap snd
                     . List.find
-                        ((\ (UserCase _ n) -> n == name) . fst)
+                        ((==) name . fst . fst)
                         $ zip ucs st
                 s2 = fst $ simulate s{ stack = ust ++ tail st2, code = iis }
             in Right $ s2{ code = is }

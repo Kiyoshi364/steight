@@ -2,7 +2,8 @@ module Typecheck
     ( typecheckIO, typecheck
     )where
 
-import Types (TypeSig(..), ConstT(..), UserType(..), UserCase(..)
+import Types (TypeSig(..), ConstT(..)
+    , UserType(UserType), UserCase(UserCase), DictUserCase
     , userType2destructorType, userType2constructors
     , compose)
 import IR.Identifier (Identifier(..), mk_type, mk_builtin)
@@ -97,7 +98,7 @@ typetypedecl prog ast str l l_tl cs =
             ++ show str
 
 do_typetypedecl :: ByteDict -> ASTDict -> Id.Type -> Loc
-    -> (Loc, TypeLit) -> [UserCase] -> [(Loc, CaseDecl)]
+    -> (Loc, TypeLit) -> DictUserCase -> [(Loc, CaseDecl)]
     -> Either String (ByteDict, ASTDict)
 do_typetypedecl prog ast str l l_tl ucs  []    =
     let
@@ -149,7 +150,7 @@ do_typetypedecl prog ast str l l_tl ucs  []    =
         ) progA (userType2constructors str ut)
 do_typetypedecl prog ast str l l_tl ucs (c:cs) =
     let
-        uc = UserCase c_l (Id.normal2constructor s)
+        uc = (Id.normal2constructor s, UserCase c_l)
     in case t of
         TypeLit [] [(_, e_vi)] ->
             case e_vi of
@@ -159,7 +160,7 @@ do_typetypedecl prog ast str l l_tl ucs (c:cs) =
                 Left _ -> err "is a type variable"
                 _ -> err "weird instruction"
         _  -> err "too many types (generic)"
-    >> do_typetypedecl prog ast str l l_tl (uc:ucs) cs
+    >> do_typetypedecl prog ast str l l_tl (uncurry insert uc ucs) cs
   where
     (c_l, c_d) = c
     CaseDecl (s_l, s) (t_l, t) = c_d

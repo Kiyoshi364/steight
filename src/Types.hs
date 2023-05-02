@@ -3,6 +3,7 @@ module Types
     , TypeSig(..)
     , UserType(..)
     , UserCase(..)
+    , DictUserCase
     , Matched(..)
     , userType2destructorType
     , userType2constructors
@@ -11,7 +12,7 @@ module Types
     ) where
 
 import Types.TypeDef (IVar, IMany, ConstT(..), TypeSig(..))
-import Types.UserType (UserType(..), UserCase(..))
+import Types.UserType (UserType(..), UserCase(..), DictUserCase)
 import Types.UserTypeUtils
     ( userType2destructorType
     , userType2constructors
