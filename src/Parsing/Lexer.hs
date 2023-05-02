@@ -235,6 +235,7 @@ keywords =
     , (TkDrop, ".")
     , (TkDrop, "drop")
     , (TkPrint, "print")
+    , (TkApply, "apply")
     , (TkApply, "$")
     , (TkDip, "dip")
     , (TkHalt, "halt")
