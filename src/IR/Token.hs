@@ -71,7 +71,7 @@ data Tkn
     | TkDo | TkBlock | TkType | TkCase | TkEnd | TkDash
     -- Builtins
     | TkAdd | TkSub | TkSwap | TkRot | TkDup
-    | TkDrop | TkPrint | TkApply | TkHalt | TkI64b
+    | TkDrop | TkPrint | TkApply | TkDip | TkHalt | TkI64b
     -- Identifiers and Literals
     | TkName Name
     -- Comment
@@ -101,6 +101,7 @@ instance Show Tkn where
     show TkDrop        = "Key ."
     show TkPrint       = "Key print"
     show TkApply       = "Key $"
+    show TkDip         = "Key dip"
     show TkHalt        = "Key halt"
     show TkI64b        = "Key I64"
     show (TkName n)    = show n
@@ -128,6 +129,7 @@ instance Match Tkn where
     match TkDrop        TkDrop        = True
     match TkPrint       TkPrint       = True
     match TkApply       TkApply       = True
+    match TkDip         TkDip         = True
     match TkHalt        TkHalt        = True
     match TkI64b        TkI64b        = True
     match (TkName n)    (TkName m)    = match n m

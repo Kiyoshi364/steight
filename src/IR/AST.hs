@@ -55,6 +55,7 @@ data Builtin
     | Print
     | Halt
     | Apply
+    | Dip
     | I64b
     deriving Eq
 
@@ -67,6 +68,7 @@ instance Show Builtin where
     show (Drop  ) = "."
     show (Print ) = "print"
     show (Apply ) = "$"
+    show (Dip   ) = "dip"
     show (Halt  ) = "halt"
     show (I64b  ) = "I64"
 
@@ -135,13 +137,14 @@ tmany i = Tmany (i, 0)
 
 builtinTyp :: Builtin -> TypeSig
 builtinTyp b = case b of
-    Add     -> Tfunc [ i64   , i64            ] [ i64                    ]
-    Sub     -> Tfunc [ i64   , i64            ] [ i64                    ]
-    Swap    -> Tfunc [ Tvar 0, Tvar 1         ] [ Tvar 1, Tvar 0         ]
-    Rot     -> Tfunc [ Tvar 0, Tvar 1, Tvar 2 ] [ Tvar 2, Tvar 0, Tvar 1 ]
-    Dup     -> Tfunc [ Tvar 0                 ] [ Tvar 0, Tvar 0         ]
-    Drop    -> Tfunc [ Tvar 0                 ] [                        ]
-    Print   -> Tfunc [ Tvar 0                 ] [                        ]
-    Apply   -> Tfunc [ Tfunc [tmany 0] [tmany 1], tmany 0 ] [ tmany 1    ]
-    Halt    -> Tfunc [                        ] [                        ]
-    I64b    -> Tfunc [                        ] [ ttyp                   ]
+    Add     -> Tfunc [ i64   , i64            ] [ i64                                 ]
+    Sub     -> Tfunc [ i64   , i64            ] [ i64                                 ]
+    Swap    -> Tfunc [ Tvar 0, Tvar 1         ] [ Tvar 1, Tvar 0                      ]
+    Rot     -> Tfunc [ Tvar 0, Tvar 1, Tvar 2 ] [ Tvar 2, Tvar 0, Tvar 1              ]
+    Dup     -> Tfunc [ Tvar 0                 ] [ Tvar 0, Tvar 0                      ]
+    Drop    -> Tfunc [ Tvar 0                 ] [                                     ]
+    Print   -> Tfunc [ Tvar 0                 ] [                                     ]
+    Apply   -> Tfunc [ Tfunc [tmany 0] [tmany 1], tmany 0 ] [ tmany 1                 ]
+    Dip     -> Tfunc [ Tfunc [tmany 0] [tmany 1], Tvar 0, tmany 0 ] [ Tvar 0, tmany 1 ]
+    Halt    -> Tfunc [                        ] [                                     ]
+    I64b    -> Tfunc [                        ] [ ttyp                                ]

@@ -74,6 +74,11 @@ step s@(State st ot p (i:is)) =
                     s2 = fst $ simulate s{ stack = xs, code = iis }
                     in Right $ s2{ code = is }
                 _                -> undefined
+            Dip     -> case st of
+                (Quote _ iis):sav:xs -> let
+                    s2 = fst $ simulate s{ stack = xs, code = iis }
+                    in Right $ s2{ stack = sav:stack s2, code = is }
+                _                -> undefined
         Chk     b -> let
             iis = insts b
             s2 = fst $ simulate s{ code = iis }

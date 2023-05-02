@@ -79,6 +79,7 @@ data Builtin
     | Print
     | Halt
     | Apply
+    | Dip
     deriving Eq
 
 instance Show Builtin where
@@ -90,6 +91,7 @@ instance Show Builtin where
     show (Drop  ) = "."
     show (Print ) = "print"
     show (Apply ) = "$"
+    show (Dip   ) = "dip"
     show (Halt  ) = "halt"
 
 fromBuiltin :: AST.Builtin -> Builtin
@@ -101,6 +103,7 @@ fromBuiltin (AST.Dup  ) = Dup
 fromBuiltin (AST.Drop ) = Drop
 fromBuiltin (AST.Print) = Print
 fromBuiltin (AST.Apply) = Apply
+fromBuiltin (AST.Dip  ) = Dip
 fromBuiltin (AST.Halt ) = Halt
 fromBuiltin (AST.I64b ) = error "IR.Bytecode.fromBuiltin: unhandled case I64b"
 

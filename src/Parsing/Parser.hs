@@ -115,7 +115,7 @@ builtinP = fmap (fork Inst fst $ Builtin . snd) $
         addP   <|> subP
     <|> swapP  <|> rotP <|> dupP  <|> dropP
     <|> printP <|> haltP
-    <|> applyP
+    <|> applyP <|> dipP
 
 addP :: Parser (Loc, Builtin)
 addP = (,) <$> match TkAdd <*> pure Add
@@ -143,6 +143,9 @@ haltP = (,) <$> match TkHalt <*> pure Halt
 
 applyP :: Parser (Loc, Builtin)
 applyP = (,) <$> match TkApply <*> pure Apply
+
+dipP :: Parser (Loc, Builtin)
+dipP = (,) <$> match TkDip <*> pure Dip
 
 quotedP :: Parser Inst
 quotedP = uncurry Inst . onSnd PQuote

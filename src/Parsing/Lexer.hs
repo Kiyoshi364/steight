@@ -236,6 +236,7 @@ keywords =
     , (TkDrop, "drop")
     , (TkPrint, "print")
     , (TkApply, "$")
+    , (TkDip, "dip")
     , (TkHalt, "halt")
     , (TkI64b, "I64")
     ]
