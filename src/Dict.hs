@@ -6,7 +6,7 @@ module Dict
     , walk, walkAntiInsertOrder
     ) where
 
-import Utils (onPair, dup)
+import Utils (onPair, duplicate)
 import qualified Data.List as L (find, partition)
 
 type Dict k v = [(k, v)]
@@ -39,7 +39,7 @@ part :: Eq k => k -> Dict k v -> ([v], [v])
 part = partWith . (==)
 
 partWith :: (k -> Bool) -> Dict k v -> ([v], [v])
-partWith = (onPair (dup $ map snd) .) . partPairWith
+partWith = (onPair (duplicate $ map snd) .) . partPairWith
 
 walk :: (k -> v -> a) -> Dict k v -> [a]
 walk = walkAntiInsertOrder

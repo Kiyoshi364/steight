@@ -2,7 +2,7 @@ module Utils
     ( (|>) , (\\) , (|$>) , (\\\) , (...)
     , fork, hook, psi
     , assert, assertWith
-    , onFst, onSnd, onBoth, onPair, dup
+    , onFst, onSnd, onBoth, onPair, duplicate
     , loop
     , Id(..), Default(..)
     , NonEmpty(..), safeCons, asList
@@ -63,8 +63,8 @@ onBoth f (a, b) = (f a, f b)
 onPair :: (a -> a', b -> b') -> (a, b) -> (a', b')
 onPair (fa, fb) = onFst fa . onSnd fb
 
-dup :: a -> (a, a)
-dup = hook (,) id
+duplicate :: a -> (a, a)
+duplicate = hook (,) id
 
 -- Others
 
