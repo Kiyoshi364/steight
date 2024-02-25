@@ -1,6 +1,6 @@
 module Utils
     ( (|>) , (\\) , (|$>) , (\\\) , (...)
-    , fork, hook
+    , fork, hook, psi
     , assert, assertWith
     , onFst, onSnd, onBoth, onPair, dup
     , loop
@@ -35,6 +35,9 @@ fork h f g x = h (f x) $ g x
 
 hook :: (a -> a' -> b) -> (a -> a') -> a -> b
 hook h = fork h id
+
+psi :: (b -> b -> c) -> (a -> b) -> a -> a -> c
+psi h f x y = h (f x) $ f y
 
 -- Assertions
 
