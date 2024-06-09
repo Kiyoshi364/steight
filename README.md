@@ -30,7 +30,8 @@ Note: that it is not ordered in any relevant way
   * build/compile
   * repl/interactive environment
   * test: Tsoding-style testing
-    * (TODO: insert some link explaining)
+    * [rere](https://github.com/tsoding/rere.py)
+    * [bi-format](https://github.com/tsoding/bi-format)
 
 * [Self-Hosting]: Reimplement the compiler in Steight
 
