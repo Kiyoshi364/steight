@@ -1,0 +1,64 @@
+type Noreturn ( Type )
+end
+
+type Unit ( Type )
+    case unit ( Unit )
+end
+
+type Bool ( Type )
+    case false ( Bool )
+    case true ( Bool )
+end
+
+// type Weird ( Type )
+//     case int ( I64 -- Weird )
+//     case bool ( Bool -- Weird )
+// end
+
+// block loop
+//     [ 7 print @true ]
+//     dup
+//     [
+//         $
+//         []
+//     ] dip
+//     !Bool
+// end
+
+block error
+    1 [] $ drop
+end
+
+block main ()
+    // do ( Noreturn -- '0 )
+    //     !Noreturn
+    // end
+    // .
+
+    @unit
+    [ 1 ]
+    // do ( Unit ( %0 ) -- %0 )
+        !Unit
+    // end
+    print
+
+    @true
+    // @false
+    [ 1 ]
+    [ 2 ]
+    // do ( Bool ( %0 ) ( %0 ) -- %0 )
+        !Bool
+    // end
+    print
+end
+
+//     3 @int
+//     []
+//     [ [ 1 ] [ 2 ] !Bool ]
+//     do ( Weird ( I64 -- %0 ) ( Bool -- %0 ) -- %0 )
+//         !Weird
+//     end
+//     print
+// end
+
+block destroy-bool !Bool end

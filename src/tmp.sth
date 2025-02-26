@@ -1,0 +1,41 @@
+type Unit ( Type )
+    case unit ( Unit )
+end
+
+type Bool ( Type )
+    case false ( Bool )
+    case true ( Bool )
+end
+
+// block error ()
+//     1 [] $ drop
+// end
+
+block asdf // ( I64 )
+    [ 3 ] @unit
+    [ apply ] dip
+    drop
+end
+
+// block loop2
+//     [ 7 print @true ]
+//     1
+//     [
+//         apply
+//     ] dip
+//     !Bool
+// end
+
+// block loop
+//     [ 7 print @true ]
+//     dup
+//     [
+//         apply
+//         []
+//     ] dip
+//     !Bool
+// end
+
+block main ()
+    asdf print
+end
